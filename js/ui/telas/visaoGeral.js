@@ -117,7 +117,7 @@ function cartaoContagem(dia) {
     legenda: `Sair para ${destino} · previsto ${hhmm(alvo.o.inicio)}`,
     classe: 'tipo-transito',
   },
-    h('div', { class: 'contagem-linha' }, icone('transito'), relogio));
+    h('div', { class: 'contagem-linha' }, icone('relogio'), relogio));
 }
 
 /* ---------------- hora de acordar ---------------- */
