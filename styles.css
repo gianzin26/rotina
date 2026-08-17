@@ -9,16 +9,18 @@
 
 :root {
   /* ---- paleta (seção 7 da especificação) ---- */
-  --bg: #F5F5F7;
+  --bg: #EEEEF1;
   --card: #FFFFFF;
   --border: #E3E3E6;
   --text: #1D1D1F;
-  --text-soft: #6E6E73;
+  /* Escurecido em relação à referência (#8A8A8A): com o fundo da página em
+     #EEEEF1 e rótulos de 12px, o cinza dela reprova no contraste AA. */
+  --text-soft: #64646A;
   --accent: #007AFF;
   --verde: #34C759;
   --amarelo: #FF9F0A;
   --vermelho: #FF3B30;
-  --grid: #EDEDF0;
+  --grid: #E5E5E8;
 
   /* As cores acima são de preenchimento. Como texto pequeno elas não passam
      no contraste AA, então cada uma tem uma variante escurecida para letra. */
@@ -34,6 +36,13 @@
   --tinta-amarela: #FDF1DF;
   --tinta-vermelha: #FDECEB;
   --tinta-neutra: #F0F0F3;
+
+  /* Mapa de calor do calendário: mais forte que a tinta de etiqueta, bem mais
+     quieto que a cor cheia. Um mês inteiro de quadrados em cor saturada vira
+     um muro; a referência usa cor com parcimônia. */
+  --cal-verde: #A8E6BE;
+  --cal-amarelo: #FFDCA6;
+  --cal-vermelho: #FFC5C1;
 
   /* ---- cor por tipo de atividade ----
      A especificação não fixa estas; são derivadas da paleta do sistema para
@@ -75,14 +84,14 @@
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
 
   --texto-cron: 44px;      /* Display */
-  --texto-metrica: 32px;   /* Display */
+  --texto-metrica: 38px;   /* Display — dígito de 27px, medido na referência */
   --texto-titulo: 28px;    /* Display */
   --texto-metrica-p: 22px; /* Display */
   --texto-acao: 17px;      /* Text */
   --texto-cartao: 15px;    /* Text */
   --texto-corpo: 15px;     /* Text */
-  --texto-legenda: 13px;   /* Text */
-  --texto-eixo: 11px;      /* Text */
+  --texto-legenda: 12px;   /* Text — subtítulo e legenda sob o número */
+  --texto-eixo: 12px;      /* Text — rótulo de eixo */
 
   --peso-normal: 400;
   --peso-medio: 500;
@@ -104,7 +113,7 @@
   --traco: 1px;
   --traco-grosso: 2px;
   --traco-lateral: 3px;
-  --sombra-cartao: 0 1px 2px rgba(0, 0, 0, .04);
+  --sombra-cartao: 0 1px 3px rgba(0, 0, 0, .03);
   --sombra-flutuante: 0 4px 16px rgba(0, 0, 0, .08);
   --sombra-acao: 0 2px 12px rgba(0, 122, 255, .28);
   --foco: 2px;
@@ -285,12 +294,8 @@ button { -webkit-tap-highlight-color: transparent; }
 
 /* ---------------- grade de cartões ---------------- */
 
-.grade {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--esp-3);
-  align-items: start;
-}
+.grade { display: flex; flex-direction: column; gap: var(--esp-4); }
+.grade > .cartao { break-inside: avoid; }
 
 /* ---------------- cartão ---------------- */
 
@@ -306,13 +311,15 @@ button { -webkit-tap-highlight-color: transparent; }
   min-width: 0;
 }
 
+.faixa-larga { margin-bottom: var(--esp-4); }
+
 .cartao-topo {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--esp-2);
 }
-.cartao-identidade { min-width: 0; display: flex; flex-direction: column; gap: var(--esp-1); }
+.cartao-identidade { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .cartao-titulo {
   font-family: var(--font-text);
   font-size: var(--texto-cartao);
@@ -343,7 +350,7 @@ button { -webkit-tap-highlight-color: transparent; }
 button.periodo { cursor: pointer; min-height: var(--toque); }
 .periodo .icone { width: var(--icone-p); height: var(--icone-p); }
 
-.cartao-metrica { display: flex; flex-direction: column; gap: var(--esp-1); }
+.cartao-metrica { display: flex; flex-direction: column; gap: 2px; }
 .metrica-linha { display: flex; align-items: baseline; gap: var(--esp-2); flex-wrap: wrap; }
 .metrica-num {
   font-family: var(--font-display);
@@ -828,10 +835,9 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
   font-size: var(--texto-eixo);
   cursor: pointer;
 }
-/* número escuro sobre o preenchimento vivo: o branco não passa no contraste */
-.cal-dia.verde { background: var(--verde); color: var(--text); font-weight: var(--peso-semi); }
-.cal-dia.amarelo { background: var(--amarelo); color: var(--text); font-weight: var(--peso-semi); }
-.cal-dia.vermelho { background: var(--vermelho); color: var(--text); font-weight: var(--peso-semi); }
+.cal-dia.verde { background: var(--cal-verde); color: var(--verde-texto); font-weight: var(--peso-semi); }
+.cal-dia.amarelo { background: var(--cal-amarelo); color: var(--amarelo-texto); font-weight: var(--peso-semi); }
+.cal-dia.vermelho { background: var(--cal-vermelho); color: var(--vermelho-texto); font-weight: var(--peso-semi); }
 .cal-dia.atipica {
   background: repeating-linear-gradient(45deg,
     var(--grid), var(--grid) var(--esp-1), var(--card) var(--esp-1), var(--card) var(--esp-2));
@@ -848,21 +854,22 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
 .g-rotulo { fill: var(--text-soft); font-family: var(--font-text); font-size: var(--texto-eixo); font-variant-numeric: tabular-nums; }
 .g-vazio { fill: var(--text-soft); font-family: var(--font-text); font-size: var(--texto-legenda); }
 
-.g-linha { fill: none; stroke-width: var(--g-espessura); stroke-linecap: round; stroke-linejoin: round; }
-.g-area { stroke: none; opacity: var(--g-opacidade-area); }
-.g-ponto { r: var(--g-raio-ponto); stroke: none; }
-.g-barra { stroke: none; }
-
 /* uma classe por série: o JS diz qual série é, o CSS diz de que cor */
 .serie-principal { stroke: var(--accent); fill: var(--accent); }
 .serie-apagada { stroke: var(--text-soft); fill: var(--text-soft); }
-.serie-apagada.g-ponto { r: var(--g-raio-ponto-p); }
 .serie-verde { stroke: var(--verde); fill: var(--verde); }
 .serie-amarela { stroke: var(--amarelo); fill: var(--amarelo); }
 .serie-vermelha { stroke: var(--vermelho); fill: var(--vermelho); }
 .serie-treino { stroke: var(--treino); fill: var(--treino); }
 .serie-sono { stroke: var(--sono); fill: var(--sono); }
-.serie-meta { stroke: var(--text-soft); fill: none; stroke-width: var(--g-espessura-meta); stroke-dasharray: var(--g-tracejado); }
+
+/* A forma vem depois da cor: linha nunca é preenchida, ponto nunca é traçado.
+   Sem esta ordem o fill da série vaza para o path e a linha vira mancha. */
+.g-linha { fill: none; stroke-width: var(--g-espessura); stroke-linecap: round; stroke-linejoin: round; }
+.g-area { stroke: none; opacity: var(--g-opacidade-area); }
+.g-ponto { r: var(--g-raio-ponto); stroke: none; }
+.serie-apagada.g-ponto { r: var(--g-raio-ponto-p); }
+.g-barra { stroke: none; }
 
 /* valor fora do alvo sempre em vermelho, não importa a série */
 .sit-fora { fill: var(--vermelho); stroke: var(--vermelho); }
@@ -1211,9 +1218,14 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 
   .cabecalho { padding: 0 0 var(--esp-6); }
 
-  .grade { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--esp-4); }
-  .cartao.largo { grid-column: span 2; }
-  .cartao { padding: var(--esp-5); }
+  /* duas colunas independentes: cada cartão ocupa a altura que precisa e a
+     coluna seguinte não espera pela mais alta */
+  .grade {
+    display: block;
+    column-count: 2;
+    column-gap: var(--esp-4);
+  }
+  .grade > .cartao { margin-bottom: var(--esp-4); }
 
   #rodape { left: var(--largura-lateral); bottom: 0; }
   .barra-acao {
@@ -1233,7 +1245,5 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 }
 
 @media (min-width: 1280px) {
-  .grade { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .cartao.largo { grid-column: span 2; }
-  .cartao.total { grid-column: 1 / -1; }
+  .grade { column-count: 3; }
 }

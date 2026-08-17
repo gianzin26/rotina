@@ -8,7 +8,7 @@
 // nova e só troca quando a pessoa toca em Atualizar — assim nenhuma tela fica
 // com metade dos arquivos velhos e metade novos.
 
-const VERSAO = 'rotina-22ceb986c7ca';
+const VERSAO = 'rotina-99895e6580b2';
 
 const ARQUIVOS = [
   './',

@@ -28,8 +28,7 @@ export function render(tela, ctx) {
         h('p', { class: 'cabecalho-sub' }, dataLonga(dia)))),
     cartaoProximo(dia, agora),
     h('div', { class: 'grade' },
-      cartao({ titulo: 'Linha do tempo', subtitulo: 'Real desenhado sobre o previsto', largo: true, classe: 'total' },
-        rolagem),
+      cartao({ titulo: 'Linha do tempo', subtitulo: 'Real desenhado sobre o previsto' }, rolagem),
       cartaoSono(dia, ctx),
       cartaoExtras(dia, ctx),
       cartaoDeslocamento()));

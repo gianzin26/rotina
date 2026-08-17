@@ -46,7 +46,6 @@ function cartaoDestaque(r, hojeReg, dia, ctx) {
       texto: `${v >= 0 ? '+' : '−'}${nUm(Math.abs(v), 2)} kg`,
       situacao, sentido: v >= 0 ? 'subiu' : 'desceu',
     },
-    largo: true,
   },
     fileiraDados(
       dado('Hoje', hojeReg?.kg != null ? nUm(hojeReg.kg, 1) : 'registrar', {

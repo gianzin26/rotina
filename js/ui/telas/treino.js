@@ -125,7 +125,6 @@ function cartaoSessao(s, registro, ocorrencia, dia, ctx) {
     metrica: String(feitos),
     unidade: `/ ${s.exercicios.length}`,
     legenda: 'exercícios registrados',
-    largo: true,
   }, ...corpo);
 }
 
@@ -232,7 +231,6 @@ function cartaoProgressao() {
       situacao: ganho > 0 ? 'noAlvo' : 'fora',
       sentido: ganho > 0 ? 'subiu' : 'desceu',
     },
-    largo: true,
   },
     seletor,
     grafico({
@@ -355,7 +353,6 @@ function cartaoCronometro(ctx) {
   return cartao({
     titulo: 'Cronômetro de intervalo',
     subtitulo: `${cfg.ciclos}× ${cfg.corridaMin} min corrida / ${cfg.caminhadaMin} min caminhada`,
-    largo: true,
   }, painel, botoes, config);
 }
 

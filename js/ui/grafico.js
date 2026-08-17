@@ -14,9 +14,16 @@ function s(tag, attrs = {}) {
   return e;
 }
 
-/* Margens em pixels. Ficam aqui porque são geometria do desenho, não estilo
-   de página: o SVG precisa delas para calcular coordenadas. */
-const MARGEM = { topo: 10, direita: 46, baixo: 22, esquerda: 2 };
+/* Geometria do desenho, medida na referência (App Store Connect):
+   - a grade horizontal atravessa a largura inteira do conteúdo do cartão;
+   - os rótulos do eixo Y ficam à direita, alinhados à borda do conteúdo e
+     centrados na própria linha de grade;
+   - os dados param antes dos rótulos, para não passarem por baixo deles.
+   Fica aqui, e não no CSS, porque o SVG precisa dos números para posicionar. */
+const MARGEM = { topo: 10, baixo: 22, esquerda: 0 };
+const FAIXA_ROTULO = 44; // reservado à direita para o rótulo do eixo Y
+const BARRA_MAX = 8;     // largura de barra medida na referência
+const BARRA_VAO = 4;     // vão entre barras
 
 /**
  * @param {object} cfg
@@ -54,7 +61,7 @@ export function grafico(cfg) {
 
 function desenharSvg(cfg, L, A) {
   const svg = s('svg', { viewBox: `0 0 ${L} ${A}`, width: L, height: A, class: 'g-svg' });
-  const larg = L - MARGEM.esquerda - MARGEM.direita;
+  const larg = L - MARGEM.esquerda - FAIXA_ROTULO; // área dos dados
   const alt = A - MARGEM.topo - MARGEM.baixo;
 
   const todos = cfg.series.flatMap((se) => se.pontos).filter((p) => p && Number.isFinite(p.y));
@@ -82,13 +89,15 @@ function desenharSvg(cfg, L, A) {
     return MARGEM.topo + (cfg.yInvertido ? t : 1 - t) * alt;
   };
 
-  /* grade horizontal + eixo Y à direita */
+  /* grade horizontal de ponta a ponta + rótulo do eixo Y encostado na direita */
   const nTicks = cfg.yTicks ?? 4;
   for (let i = 0; i <= nTicks; i++) {
     const y = y0 + ((y1 - y0) * i) / nTicks;
     const yy = Math.round(py(y)) + 0.5; // meia unidade: linha de 1px sem borrar
-    svg.append(s('line', { x1: MARGEM.esquerda, x2: L - MARGEM.direita, y1: yy, y2: yy, class: 'g-grade' }));
-    const t = s('text', { x: L - MARGEM.direita + 8, y: yy + 4, class: 'g-rotulo' });
+    svg.append(s('line', { x1: MARGEM.esquerda, x2: L, y1: yy, y2: yy, class: 'g-grade' }));
+    const t = s('text', {
+      x: L, y: yy, 'text-anchor': 'end', 'dominant-baseline': 'central', class: 'g-rotulo',
+    });
     t.textContent = cfg.formatoY ? cfg.formatoY(y) : Math.round(y * 10) / 10;
     svg.append(t);
   }
@@ -96,7 +105,7 @@ function desenharSvg(cfg, L, A) {
   /* meta como linha tracejada cinza */
   if (cfg.meta != null && cfg.meta >= y0 && cfg.meta <= y1) {
     const yy = Math.round(py(cfg.meta)) + 0.5;
-    svg.append(s('line', { x1: MARGEM.esquerda, x2: L - MARGEM.direita, y1: yy, y2: yy, class: 'g-meta' }));
+    svg.append(s('line', { x1: MARGEM.esquerda, x2: L, y1: yy, y2: yy, class: 'g-meta' }));
   }
 
   /* séries */
@@ -106,16 +115,17 @@ function desenharSvg(cfg, L, A) {
     const classe = se.serie || 'serie-principal';
 
     if (se.tipo === 'barras') {
-      // barra fina com bastante ar entre elas, como no painel de referência
+      // Referência: passo de 12px com barra de 8px e vão de 4px. Quando cabem
+      // menos pixels por ponto, a barra encolhe mas o vão nunca some.
       const passo = pts.length > 1 ? larg / pts.length : larg;
-      const largura = Math.max(2, Math.min(10, passo * 0.42));
+      const largura = Math.max(1.5, Math.min(BARRA_MAX, passo - BARRA_VAO));
       const base = py(Math.max(y0, 0));
       for (const p of pts) {
         const yy = py(p.y);
         const altura = Math.max(1.5, Math.abs(base - yy));
         svg.append(s('rect', {
           x: px(p.x) - largura / 2, y: Math.min(yy, base),
-          width: largura, height: altura, rx: Math.min(1.5, largura / 2),
+          width: largura, height: altura, rx: Math.min(1, largura / 2),
           class: `${classe} g-barra ${p.situacao ? `sit-${p.situacao}` : ''}`.trim(),
         }));
       }
@@ -145,7 +155,7 @@ function desenharSvg(cfg, L, A) {
   for (const r of cfg.rotulosX || []) {
     const x = px(r.x);
     const t = s('text', {
-      x: Math.min(Math.max(x, 14), L - MARGEM.direita - 4),
+      x: Math.min(Math.max(x, 14), L - FAIXA_ROTULO - 4),
       y: A - 6, 'text-anchor': 'middle', class: 'g-rotulo',
     });
     t.textContent = r.texto;

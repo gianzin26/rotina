@@ -64,7 +64,6 @@ function cartaoHoraDeAcordar(dia) {
       situacao: Math.abs(desvioMedio) <= 5 ? 'noAlvo' : desvioMedio > 20 ? 'fora' : 'deriva',
       sentido: desvioMedio > 0 ? 'desceu' : 'subiu',
     },
-    largo: true,
   },
     grafico({
       altura: 180, descricao: 'hora de acordar nas últimas seis semanas',
@@ -100,7 +99,7 @@ function cartaoSono(dia) {
     grafico({
       altura: 180, descricao: 'horas de sono por noite', base0: true,
       formatoY: (y) => `${y.toFixed(1).replace('.', ',')} h`, rotulosX, meta: 6,
-      series: [{ tipo: 'barras', serie: 'serie-sono', pontos }],
+      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));
 }
 
@@ -135,7 +134,6 @@ function cartaoPeso() {
       situacao: v >= gMin && v <= gMax ? 'noAlvo' : v > 0 ? 'deriva' : 'fora',
       sentido: v >= 0 ? 'subiu' : 'desceu',
     },
-    largo: true,
   },
     grafico({
       altura: 200, descricao: 'peso diário e média de 7 dias',
@@ -182,7 +180,6 @@ function cartaoAderencia(dia, ctx) {
     unidade: seq === 1 ? 'dia' : 'dias',
     legenda: 'sequência no alvo de acordar',
     delta: { texto: `${noAlvo} dias no alvo`, situacao: 'noAlvo', sentido: 'subiu' },
-    largo: true,
   },
     grade,
     fileiraDados(
