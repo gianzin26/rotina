@@ -19,9 +19,7 @@ import { cartao } from '../cartao.js';
 import { anexar, h, vazio } from '../dom.js';
 import { grafico } from '../grafico.js';
 import { icone } from '../icones.js';
-
-const JANELA = 14;      // duas semanas: barras largas o bastante para ler
-const JANELA_PESO = 30;
+import { janela, periodoEmDias, periodoEmSemanas } from '../periodo.js';
 
 /**
  * Rótulos de data espalhados por igual, sempre incluindo o primeiro e o último.
@@ -60,14 +58,14 @@ export function render(tela, ctx) {
       h('div', {}, h('h1', {}, 'Visão geral'))),
     h('div', { class: 'grade' },
       cartaoContagem(dia),
-      cartaoHoraDeAcordar(dia),
-      cartaoPeso(),
-      cartaoSono(dia),
-      cartaoAderencia(dia),
+      cartaoHoraDeAcordar(dia, ctx),
+      cartaoPeso(ctx),
+      cartaoSono(dia, ctx),
+      cartaoAderencia(dia, ctx),
       cartaoCreatina(dia, ctx),
       cartaoDeslocamento(),
-      cartaoVolume(),
-      cartaoCorrida()));
+      cartaoVolume(ctx),
+      cartaoCorrida(ctx)));
 }
 
 /* ---------------- contagem para a próxima saída ---------------- */
@@ -127,14 +125,15 @@ function cartaoContagem(dia) {
 
 /* ---------------- hora de acordar ---------------- */
 
-function cartaoHoraDeAcordar(dia) {
+function cartaoHoraDeAcordar(dia, ctx) {
+  const dias = janela('horaAcordar');
   const datas = [];
   const pontos = [];
-  for (let i = JANELA - 1; i >= 0; i--) {
+  for (let i = dias - 1; i >= 0; i--) {
     const d = somaDias(dia, -i);
     datas.push(d);
     const s = registroDoDia('sono', d);
-    if (s?.acordou) pontos.push({ x: JANELA - 1 - i, y: min(s.acordou) });
+    if (s?.acordou) pontos.push({ x: dias - 1 - i, y: min(s.acordou) });
   }
   const plano = estado.rotina.find((r) => r.tipo === 'acordar');
   const alvo = plano ? min(plano.inicio) : null;
@@ -142,12 +141,12 @@ function cartaoHoraDeAcordar(dia) {
 
   return cartao({
     titulo: 'Hora de acordar',
-    periodo: 'Últimos 14 dias',
+    periodo: periodoEmDias('horaAcordar', ctx),
     metrica: m != null ? hhmm(Math.round(m)) : '—',
     legenda: alvo != null ? `Média · alvo ${hhmm(alvo)}` : 'Média',
   },
     grafico({
-      altura: 140, descricao: 'hora de acordar nos últimos 14 dias',
+      altura: 140, descricao: `hora de acordar nos últimos ${dias} dias`,
       // barras crescendo do chão, como no modelo: mais alto = acordou mais tarde
       formatoY: (y) => hhmm(y), meta: alvo,
       rotulosX: rotulosDeDatas(datas, 5),
@@ -157,11 +156,11 @@ function cartaoHoraDeAcordar(dia) {
 
 /* ---------------- peso ---------------- */
 
-function cartaoPeso() {
-  const s = seriePeso().slice(-JANELA_PESO);
+function cartaoPeso(ctx) {
+  const s = seriePeso().slice(-janela('peso'));
   const r = resumoPeso();
   if (!s.length) {
-    return cartao({ titulo: 'Peso', periodo: 'Média de 7 dias' },
+    return cartao({ titulo: 'Peso', periodo: periodoEmDias('peso', ctx) },
       vazio('Registre o peso por alguns dias para ver a curva.'));
   }
   const base = s[0].data;
@@ -172,7 +171,9 @@ function cartaoPeso() {
 
   return cartao({
     titulo: 'Peso',
-    periodo: 'Média de 7 dias',
+    // o seletor governa a curva; o número grande continua sendo a média de 7 dias
+    subtitulo: 'Média de 7 dias',
+    periodo: periodoEmDias('peso', ctx),
     metrica: r.media7 != null ? nUm(r.media7, 1) : '—',
     unidade: 'kg',
     legenda: v != null
@@ -191,21 +192,22 @@ function cartaoPeso() {
 
 /* ---------------- sono ---------------- */
 
-function cartaoSono(dia) {
+function cartaoSono(dia, ctx) {
+  const dias = janela('sono');
   const datas = [];
   const pontos = [];
-  for (let i = JANELA - 1; i >= 0; i--) {
+  for (let i = dias - 1; i >= 0; i--) {
     const d = somaDias(dia, -i);
     datas.push(d);
     const hS = horasDeSono(d);
-    if (hS != null) pontos.push({ x: JANELA - 1 - i, y: hS, situacao: hS < 6 ? 'fora' : null });
+    if (hS != null) pontos.push({ x: dias - 1 - i, y: hS, situacao: hS < 6 ? 'fora' : null });
   }
   const m = media(pontos.map((p) => p.y));
   const curtas = pontos.filter((p) => p.y < 6).length;
 
   return cartao({
     titulo: 'Sono',
-    periodo: 'Últimos 14 dias',
+    periodo: periodoEmDias('sono', ctx),
     metrica: m != null ? duracao(m * 60) : '—',
     legenda: curtas ? `${curtas} noites abaixo de 6 h` : 'Média por noite',
     legendaSituacao: curtas ? 'fora' : null,
@@ -221,8 +223,9 @@ function cartaoSono(dia) {
 
 /* ---------------- aderência ---------------- */
 
-function cartaoAderencia(dia) {
-  const dias = Array.from({ length: 7 }, (_, i) => somaDias(dia, -(6 - i)));
+function cartaoAderencia(dia, ctx) {
+  const n = janela('aderencia');
+  const dias = Array.from({ length: n }, (_, i) => somaDias(dia, -(n - 1 - i)));
   let totalGeral = 0;
   let okGeral = 0;
   const pontos = dias.map((d, x) => {
@@ -237,7 +240,7 @@ function cartaoAderencia(dia) {
 
   return cartao({
     titulo: 'Aderência',
-    periodo: 'Últimos 7 dias',
+    periodo: periodoEmDias('aderencia', ctx),
     metrica: pct != null ? `${pct}%` : '—',
     legenda: `No horário · ${okGeral} de ${totalGeral} registros`,
   },
@@ -308,9 +311,9 @@ function cartaoDeslocamento() {
 
 /* ---------------- volume de treino ---------------- */
 
-function cartaoVolume() {
+function cartaoVolume(ctx) {
   const dia = diaLogico();
-  const semanas = 8;
+  const semanas = janela('volume');
   const pontos = [];
   const rotulos = [];
   for (let i = semanas - 1; i >= 0; i--) {
@@ -321,7 +324,8 @@ function cartaoVolume() {
       .reduce((a, t) => a + (t.exercicios || []).reduce((b, e) => b + (e.carga || 0) * (e.reps || 0), 0), 0);
     const x = semanas - 1 - i;
     pontos.push({ x, y: volume });
-    if (i % 2 === 0) rotulos.push({ x, texto: dataCurta(ini) });
+    // um rótulo a cada N semanas, para 26 semanas não virarem 13 datas coladas
+    if (i % Math.max(1, Math.round(semanas / 5)) === 0) rotulos.push({ x, texto: dataCurta(ini) });
   }
   const desde = somaDias(dia, -6);
   const ultimos7 = historico()
@@ -330,7 +334,8 @@ function cartaoVolume() {
 
   return cartao({
     titulo: 'Volume de treino',
-    periodo: '8 semanas',
+    // agregado por semana, então o seletor é em semanas, não em dias
+    periodo: periodoEmSemanas('volume', ctx),
     metrica: nUm(ultimos7 / 1000, 1),
     unidade: 't',
     legenda: ultimos7 ? 'Carga levantada nos últimos 7 dias' : 'Sem treino nos últimos 7 dias',
@@ -344,16 +349,16 @@ function cartaoVolume() {
 
 /* ---------------- corrida ---------------- */
 
-function cartaoCorrida() {
+function cartaoCorrida(ctx) {
   // pace só existe onde há distância e tempo; o resto não entra no gráfico
+  const desde = somaDias(diaLogico(), -(janela('corrida') - 1));
   const lista = corridas()
-    .filter((c) => c.distanciaKm > 0 && c.minutos > 0)
-    .sort((a, b) => a.data.localeCompare(b.data))
-    .slice(-8);
+    .filter((c) => c.distanciaKm > 0 && c.minutos > 0 && c.data >= desde)
+    .sort((a, b) => a.data.localeCompare(b.data));
 
   if (!lista.length) {
-    return cartao({ titulo: 'Corrida', periodo: 'Pace por treino' },
-      vazio('Registre uma corrida em Treino → Corrida para ver o pace.'));
+    return cartao({ titulo: 'Corrida', periodo: periodoEmDias('corrida', ctx) },
+      vazio('Nenhuma corrida com distância e tempo neste período.'));
   }
 
   const pontos = lista.map((c, x) => ({ x, y: c.minutos / c.distanciaKm }));
@@ -362,10 +367,11 @@ function cartaoCorrida() {
 
   return cartao({
     titulo: 'Corrida',
-    periodo: 'Pace por treino',
+    subtitulo: 'Pace por treino',
+    periodo: periodoEmDias('corrida', ctx),
     metrica: paceTexto(ultimo),
     unidade: 'min/km',
-    legenda: `Último treino · ${nUm(km, 1)} km nas últimas ${lista.length}`,
+    legenda: `Último treino · ${nUm(km, 1)} km em ${lista.length} ${lista.length === 1 ? 'corrida' : 'corridas'}`,
   },
     grafico({
       altura: 140, descricao: 'pace das últimas corridas',
