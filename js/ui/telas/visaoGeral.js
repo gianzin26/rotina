@@ -3,6 +3,10 @@
 
 import { diaAderencia } from '../../nucleo/aderencia.js';
 import { horasDeSono, ocorrencias } from '../../nucleo/agenda.js';
+import {
+  alternar as alternarCreatina, contagemSemana as contagemCreatina,
+  semana as semanaCreatina, sequencia as sequenciaCreatina,
+} from '../../nucleo/creatina.js';
 import { comparacao } from '../../nucleo/deslocamento.js';
 import { resumo as resumoPeso, serie as seriePeso } from '../../nucleo/peso.js';
 import { estado, registroDoDia, trajeto } from '../../nucleo/store.js';
@@ -60,6 +64,7 @@ export function render(tela, ctx) {
       cartaoPeso(),
       cartaoSono(dia),
       cartaoAderencia(dia),
+      cartaoCreatina(dia, ctx),
       cartaoDeslocamento(),
       cartaoVolume(),
       cartaoCorrida()));
@@ -242,6 +247,37 @@ function cartaoAderencia(dia) {
       })),
       series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));
+}
+
+/* ---------------- creatina ---------------- */
+
+function cartaoCreatina(dia, ctx) {
+  const dias = semanaCreatina(dia);
+  const { feitos, total, decorridos } = contagemCreatina(dia);
+  const seguidos = sequenciaCreatina(dia);
+  const faltam = decorridos - feitos;
+
+  const legenda = faltam === 0
+    ? (seguidos > 1 ? `${seguidos} dias seguidos` : 'Em dia')
+    : `${faltam} ${faltam === 1 ? 'dia em aberto' : 'dias em aberto'}`;
+
+  return cartao({
+    titulo: 'Creatina',
+    periodo: 'Esta semana',
+    metrica: `${feitos}/${total}`,
+    legenda,
+    legendaSituacao: faltam === 0 ? 'noAlvo' : null,
+  },
+    h('div', { class: 'creatina-semana' }, dias.map((d) => h('div', { class: 'creatina-dia' },
+      h('span', { class: 'creatina-inicial' }, d.inicial),
+      h('button', {
+        class: ['creatina-marca', d.tomou && 'feito', d.hoje && 'hoje', d.futuro && 'futuro']
+          .filter(Boolean).join(' '),
+        disabled: d.futuro || null,
+        'aria-pressed': d.futuro ? null : String(d.tomou),
+        'aria-label': `${dataCurta(d.data)}${d.tomou ? ', tomou' : ', não tomou'}`,
+        onclick: d.futuro ? null : () => { alternarCreatina(d.data); ctx.recarregar(); },
+      }, d.tomou ? icone('check') : null)))));
 }
 
 /* ---------------- deslocamento ---------------- */
