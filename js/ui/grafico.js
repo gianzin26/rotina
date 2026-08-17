@@ -22,10 +22,26 @@ function s(tag, attrs = {}) {
    Fica aqui, e não no CSS, porque o SVG precisa dos números para posicionar. */
 const MARGEM = { topo: 10, baixo: 22, esquerda: 0 };
 const FAIXA_ROTULO = 42; // reservado à direita para o rótulo do eixo Y
-const BARRA_MAX = 4;     // barra de 4px com passo de 10, como na referência
-const BARRA_VAO = 6;
+/* Medido nas referências do Stitch: a barra ocupa de 35% a 39% da banda, e a
+   mais larga (Aderência, 7 barras) tem 16px de corpo. O canto é uma
+   semicircunferência de raio igual a metade da largura — o perfil do topo
+   cresce até a largura cheia em exatamente meia largura, e a base repete. */
+const BARRA_OCUPACAO = 0.36;
+const BARRA_MIN = 2;
+const BARRA_MAX = 16;
 
 let contadorGradiente = 0;
+
+/**
+ * Arredonda o passo do eixo para 1, 2, 2,5 ou 5 vezes uma potência de dez.
+ * Em minutos isso cai em 15, 30 ou 60; em horas e quilos, em unidades inteiras.
+ */
+function passoRedondo(bruto) {
+  if (!(bruto > 0)) return 1;
+  const mag = 10 ** Math.floor(Math.log10(bruto));
+  const n = bruto / mag;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+}
 
 /**
  * @param {object} cfg
@@ -79,22 +95,43 @@ function desenharSvg(cfg, L, A) {
 
   const ys = todos.map((p) => p.y);
   const xs = todos.map((p) => p.x);
+  const temBarras = cfg.series.some((se) => se.tipo === 'barras');
   let y0 = cfg.yMin ?? Math.min(...ys);
   let y1 = cfg.yMax ?? Math.max(...ys);
   if (cfg.base0 && y0 > 0) y0 = 0;
   if (y0 === y1) { y0 -= 1; y1 += 1; }
   // com yMax explícito a escala é exatamente a pedida: os cortes saem redondos
   if (cfg.yMax == null || cfg.yMin == null) {
-    const folga = (y1 - y0) * 0.1;
-    if (cfg.yMin == null) y0 -= folga;
-    if (cfg.yMax == null) y1 += folga;
+    // Barra precisa de chão: no modelo o eixo começa bem abaixo do menor dado,
+    // senão o dia mais baixo vira um ponto sem corpo. Linha não precisa disso.
+    const folgaBaixo = (y1 - y0) * (temBarras && !cfg.base0 ? 0.35 : 0.1);
+    const folgaCima = (y1 - y0) * 0.1;
+    if (cfg.yMin == null) y0 -= folgaBaixo;
+    if (cfg.yMax == null) y1 += folgaCima;
   }
   if (cfg.base0) y0 = 0; // barras nascem no zero, sem eixo negativo
+  // Corta em valores redondos, como os 5AM..10AM da referência. Os cortes
+  // passam a cair nos múltiplos do passo, senão o rótulo arredondado repete
+  // ("7h 7h 8h 8h 9h") quando o passo é mais fino que a casa exibida.
+  let ticksDoPasso = null;
+  if (temBarras && cfg.yMin == null && cfg.yMax == null) {
+    const rotular = cfg.formatoY || ((v) => String(Math.round(v)));
+    let passo = passoRedondo((y1 - y0) / (cfg.yTicks ?? 4));
+    const bruto0 = y0;
+    const bruto1 = y1;
+    for (let tentativa = 0; tentativa < 6; tentativa++) {
+      y0 = Math.floor(bruto0 / passo) * passo;
+      y1 = Math.ceil(bruto1 / passo) * passo;
+      ticksDoPasso = Math.max(1, Math.round((y1 - y0) / passo));
+      const rotulos = Array.from({ length: ticksDoPasso + 1 }, (_, i) => rotular(y0 + passo * i));
+      if (new Set(rotulos).size === rotulos.length) break;
+      passo = passoRedondo(passo * 1.6); // sobe um degrau: 0,5 → 1 → 2 → 2,5 → 5
+    }
+  }
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
 
   // Barra ocupa uma faixa, não um ponto: com escala contínua a primeira e a
   // última ficam metade para fora. Com banda, cada uma senta no meio da sua.
-  const temBarras = cfg.series.some((se) => se.tipo === 'barras');
   const banda = larg / Math.max(1, x1 - x0 + 1);
   const px = temBarras
     ? (x) => MARGEM.esquerda + banda * (x - x0 + 0.5)
@@ -105,7 +142,7 @@ function desenharSvg(cfg, L, A) {
   };
 
   /* grade horizontal de ponta a ponta + rótulo do eixo Y encostado na direita */
-  const nTicks = cfg.semRotulos ? 0 : (cfg.yTicks ?? 4);
+  const nTicks = cfg.semRotulos ? 0 : (ticksDoPasso ?? cfg.yTicks ?? 4);
   for (let i = 0; i <= nTicks && !cfg.semRotulos; i++) {
     const y = y0 + ((y1 - y0) * i) / nTicks;
     const yy = Math.round(py(y)) + 0.5; // meia unidade: linha de 1px sem borrar
@@ -132,7 +169,7 @@ function desenharSvg(cfg, L, A) {
     if (se.tipo === 'barras') {
       // Referência: passo de 12px com barra de 8px e vão de 4px. Quando cabem
       // menos pixels por ponto, a barra encolhe mas o vão nunca some.
-      const largura = Math.max(1.5, Math.min(BARRA_MAX, banda - BARRA_VAO));
+      const largura = Math.max(BARRA_MIN, Math.min(BARRA_MAX, banda * BARRA_OCUPACAO));
       // com eixo invertido o zero fica em cima; a barra continua crescendo
       // do chão do desenho, senão sai pendurada de cabeça para baixo
       const base = cfg.yInvertido ? MARGEM.topo + alt : py(Math.max(y0, 0));
@@ -141,7 +178,8 @@ function desenharSvg(cfg, L, A) {
         const altura = Math.max(1.5, Math.abs(base - yy));
         svg.append(s('rect', {
           x: px(p.x) - largura / 2, y: Math.min(yy, base),
-          width: largura, height: altura, rx: Math.min(1, largura / 2),
+          // rx sozinho já define ry igual: cápsula de ponta a ponta
+          width: largura, height: altura, rx: largura / 2,
           class: `${classe} g-barra ${p.situacao ? `sit-${p.situacao}` : ''}`.trim(),
         }));
       }

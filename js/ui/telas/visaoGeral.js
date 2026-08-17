@@ -148,9 +148,10 @@ function cartaoHoraDeAcordar(dia) {
   },
     grafico({
       altura: 140, descricao: 'hora de acordar nos últimos 14 dias',
-      yInvertido: true, formatoY: (y) => hhmm(y), meta: alvo,
+      // barras crescendo do chão, como no modelo: mais alto = acordou mais tarde
+      formatoY: (y) => hhmm(y), meta: alvo,
       rotulosX: rotulosDeDatas(datas, 5),
-      series: [{ tipo: 'linha', serie: 'serie-principal', marcadores: true, pontos }],
+      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));
 }
 
@@ -210,7 +211,8 @@ function cartaoSono(dia) {
     legendaSituacao: curtas ? 'fora' : null,
   },
     grafico({
-      altura: 140, descricao: 'horas de sono por noite', base0: true, meta: 6,
+      // sem base0: no modelo o eixo vai de 4h a 9h, não do zero
+      altura: 140, descricao: 'horas de sono por noite', meta: 6,
       formatoY: (y) => `${Math.round(y)}h`,
       rotulosX: rotulosDeDatas(datas, 5),
       series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
