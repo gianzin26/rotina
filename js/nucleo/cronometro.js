@@ -27,7 +27,10 @@ export function criarCronometro(config, { aoAtualizar, aoTrocarFase, aoTerminar 
   let tique = null;
 
   const decorridoNaFase = () => decorridoFase + (rodando ? (Date.now() - marcaInicio) / 1000 : 0);
-  const restanteFase = () => Math.max(0, lista[iFase].seg - decorridoNaFase());
+  // No fim da sessão iFase passa do último índice, e `avancar` ainda monta um
+  // estado para avisar quem escuta. Sem a guarda, ler a fase inexistente
+  // estourava antes de `aoTerminar`, e o treino concluído não era gravado.
+  const restanteFase = () => Math.max(0, (lista[iFase]?.seg ?? 0) - decorridoNaFase());
   const decorridoTotal = () => lista.slice(0, iFase).reduce((a, f) => a + f.seg, 0) + decorridoNaFase();
 
   function estadoAtual() {

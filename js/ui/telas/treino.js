@@ -292,7 +292,8 @@ function cartaoCronometro(ctx) {
         e.terminado ? 'Fim da sessão' : e.fase?.rotulo || 'Pronto'),
       h('span', { class: 'cron-tempo' }, mmss(e.terminado ? 0 : e.restante)),
       h('div', { class: 'cron-barra' },
-        h('div', { class: 'cron-barra-cheia', vars: { progresso: Math.min(1, e.decorridoTotal / e.totalSeg) } })),
+        // sessão sem fases daria 0/0: a variável CSS receberia NaN
+        h('div', { class: 'cron-barra-cheia', vars: { progresso: e.totalSeg ? Math.min(1, e.decorridoTotal / e.totalSeg) : 0 } })),
       h('span', { class: 'texto-suave' },
         `${Math.min(e.indice + 1, e.totalFases)} de ${e.totalFases} · faltam ${mmss(Math.max(0, e.totalSeg - e.decorridoTotal))}`));
   };
