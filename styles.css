@@ -9,55 +9,56 @@
 
 :root {
   /* ---- paleta (seção 7 da especificação) ---- */
-  --bg: #EEEEF1;
+  --bg: #F5F5F7;
   --card: #FFFFFF;
-  --border: #E3E3E6;
-  --text: #1D1D1F;
-  /* Escurecido em relação à referência (#8A8A8A): com o fundo da página em
-     #EEEEF1 e rótulos de 12px, o cinza dela reprova no contraste AA. */
-  --text-soft: #64646A;
-  --accent: #007AFF;
-  --verde: #34C759;
-  --amarelo: #FF9F0A;
-  --vermelho: #FF3B30;
-  --grid: #E5E5E8;
+  --border: #E5E7EB;
+  --text: #111827;
+  /* A referência usa #9CA3AF nos rótulos (2,6:1) e gray-500 #6B7280 nos
+     secundários (4,44:1 sobre o fundo da página). Ambos reprovam no AA;
+     este é o cinza mais claro que passa sobre branco e sobre o fundo. */
+  --text-soft: #646B78;
+  --accent: #3B82F6;
+  --verde: #22C55E;
+  --amarelo: #F59E0B;
+  --vermelho: #EF4444;
+  --grid: #E5E7EB;
 
   /* As cores acima são de preenchimento. Como texto pequeno elas não passam
      no contraste AA, então cada uma tem uma variante escurecida para letra. */
-  --accent-texto: #0062CC;
-  --verde-texto: #17703A;
-  --amarelo-texto: #8F5B00;
-  --vermelho-texto: #C6231A;
+  --accent-texto: #1D63D2;
+  --verde-texto: #15803D;
+  --amarelo-texto: #92610A;
+  --vermelho-texto: #DC2626;
   --sobre-acento: #FFFFFF;
 
   /* Tinta de fundo para etiquetas e alertas. */
-  --tinta-accent: #E8F1FE;
-  --tinta-verde: #E6F7EC;
-  --tinta-amarela: #FDF1DF;
-  --tinta-vermelha: #FDECEB;
-  --tinta-neutra: #F0F0F3;
+  --tinta-accent: #DBEAFE;
+  --tinta-verde: #DCFCE7;
+  --tinta-amarela: #FEF3C7;
+  --tinta-vermelha: #FEE2E2;
+  --tinta-neutra: #F3F4F6;
 
   /* Mapa de calor do calendário: mais forte que a tinta de etiqueta, bem mais
      quieto que a cor cheia. Um mês inteiro de quadrados em cor saturada vira
      um muro; a referência usa cor com parcimônia. */
-  --cal-verde: #A8E6BE;
-  --cal-amarelo: #FFDCA6;
-  --cal-vermelho: #FFC5C1;
+  --cal-verde: #BBF7D0;
+  --cal-amarelo: #FDE68A;
+  --cal-vermelho: #FECACA;
 
   /* ---- cor por tipo de atividade ----
      A especificação não fixa estas; são derivadas da paleta do sistema para
      distinguir os blocos da linha do tempo. Só aparecem como preenchimento. */
-  --sono: #5E5CE6;
-  --transito: #32ADE6;
-  --trabalho: #8E8E93;
-  --aula: #AF52DE;
-  --treino: #FF9500;
+  --sono: #8B5CF6;
+  --transito: #06B6D4;
+  --trabalho: #6B7280;
+  --aula: #A855F7;
+  --treino: #F59E0B;
 
-  --tinta-sono: #EEEEFC;
-  --tinta-transito: #E6F5FD;
-  --tinta-trabalho: #F0F0F2;
-  --tinta-aula: #F7EDFC;
-  --tinta-treino: #FFF3E3;
+  --tinta-sono: #EDE9FE;
+  --tinta-transito: #CFFAFE;
+  --tinta-trabalho: #F3F4F6;
+  --tinta-aula: #F3E8FF;
+  --tinta-treino: #FEF3C7;
 
   --sobreposicao: rgba(0, 0, 0, .32);
   --aviso-fundo: #1D1D1F;
@@ -84,14 +85,15 @@
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
 
   --texto-cron: 44px;      /* Display */
-  --texto-metrica: 38px;   /* Display — dígito de 27px, medido na referência */
-  --texto-titulo: 28px;    /* Display */
-  --texto-metrica-p: 22px; /* Display */
+  --texto-metrica: 40px;   /* Display — número grande do cartão */
+  --texto-titulo: 32px;    /* Display — título de tela */
+  --texto-metrica-p: 24px; /* Display — número do cartão pequeno */
   --texto-acao: 17px;      /* Text */
-  --texto-cartao: 15px;    /* Text */
-  --texto-corpo: 15px;     /* Text */
-  --texto-legenda: 12px;   /* Text — subtítulo e legenda sob o número */
-  --texto-eixo: 12px;      /* Text — rótulo de eixo */
+  --texto-cartao: 17px;    /* Text — título do cartão */
+  --texto-corpo: 15px;     /* Text — legenda sob o número */
+  --texto-legenda: 14px;   /* Text — seletor de período */
+  --texto-mini: 13px;      /* Text — linhas de lista secundárias */
+  --texto-eixo: 10px;      /* Text — rótulo de eixo */
 
   --peso-normal: 400;
   --peso-medio: 500;
@@ -103,17 +105,17 @@
   --altura-linha-justa: 1.1;
 
   /* ---- raio, traço, sombra ---- */
-  --raio-p: 6px;
+  --raio-p: 4px;
   --raio-m: 8px;
-  --raio-g: 10px;
-  --raio-cartao: 12px;
-  --raio-folha: 16px;
+  --raio-g: 12px;
+  --raio-cartao: 16px;   /* rounded-2xl */
+  --raio-folha: 20px;
   --raio-total: 999px;
 
   --traco: 1px;
   --traco-grosso: 2px;
   --traco-lateral: 3px;
-  --sombra-cartao: 0 1px 3px rgba(0, 0, 0, .03);
+  --sombra-cartao: 0 1px 2px rgba(0, 0, 0, .05);  /* shadow-sm */
   --sombra-flutuante: 0 4px 16px rgba(0, 0, 0, .08);
   --sombra-acao: 0 2px 12px rgba(0, 122, 255, .28);
   --foco: 2px;
@@ -165,8 +167,11 @@
   --g-espessura-meta: 1;
   --g-raio-ponto: 3;
   --g-raio-ponto-p: 2.5;
-  --g-tracejado: 4 4;
-  --g-opacidade-area: .1;
+  --g-tracejado-grade: 2 2;  /* a grade da referência é tracejada */
+  --g-tracejado: 4 4;        /* meta */
+  --g-opacidade-area: .3;    /* topo do gradiente sob a linha */
+  --g-barra: 4px;
+  --g-barra-passo: 10px;
 }
 
 * { box-sizing: border-box; }
@@ -295,7 +300,7 @@ button { -webkit-tap-highlight-color: transparent; }
 /* ---------------- grade de cartões ---------------- */
 
 .grade { display: flex; flex-direction: column; gap: var(--esp-4); }
-.grade > .cartao { break-inside: avoid; }
+.grade > .cartao, .grade > .grupo { break-inside: avoid; }
 
 /* ---------------- cartão ---------------- */
 
@@ -304,7 +309,7 @@ button { -webkit-tap-highlight-color: transparent; }
   border: var(--traco) solid var(--border);
   border-radius: var(--raio-cartao);
   box-shadow: var(--sombra-cartao);
-  padding: var(--esp-4);
+  padding: var(--esp-5);
   display: flex;
   flex-direction: column;
   gap: var(--esp-3);
@@ -323,7 +328,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .cartao-titulo {
   font-family: var(--font-text);
   font-size: var(--texto-cartao);
-  font-weight: var(--peso-semi);
+  font-weight: var(--peso-forte);
+  letter-spacing: var(--tracking-display);
   line-height: 1.3;
 }
 .cartao-subtitulo {
@@ -350,14 +356,14 @@ button { -webkit-tap-highlight-color: transparent; }
 button.periodo { cursor: pointer; min-height: var(--toque); }
 .periodo .icone { width: var(--icone-p); height: var(--icone-p); }
 
-.cartao-metrica { display: flex; flex-direction: column; gap: 2px; }
+.cartao-metrica { display: flex; flex-direction: column; gap: var(--esp-2); margin-top: var(--esp-1); }
 .metrica-linha { display: flex; align-items: baseline; gap: var(--esp-2); flex-wrap: wrap; }
 .metrica-num {
   font-family: var(--font-display);
   font-size: var(--texto-metrica);
   font-weight: var(--peso-forte);
   letter-spacing: var(--tracking-display);
-  line-height: var(--altura-linha-justa);
+  line-height: 1;
 }
 .metrica-unidade {
   font-size: var(--texto-metrica-p);
@@ -365,7 +371,7 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
   color: var(--text-soft);
   margin-left: var(--esp-1);
 }
-.metrica-legenda { font-size: var(--texto-legenda); color: var(--text-soft); }
+.metrica-legenda { font-size: var(--texto-corpo); color: var(--text-soft); }
 
 .delta {
   display: inline-flex;
@@ -849,9 +855,10 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
 
 .grafico { width: 100%; height: calc(var(--g-altura) * 1px); }
 .g-svg { display: block; overflow: visible; }
-.g-grade { stroke: var(--grid); stroke-width: var(--traco); }
+.g-grade { stroke: var(--grid); stroke-width: var(--traco); stroke-dasharray: var(--g-tracejado-grade); }
 .g-meta { stroke: var(--text-soft); stroke-width: var(--g-espessura-meta); stroke-dasharray: var(--g-tracejado); opacity: .6; }
 .g-rotulo { fill: var(--text-soft); font-family: var(--font-text); font-size: var(--texto-eixo); font-variant-numeric: tabular-nums; }
+.g-area-grad { stop-opacity: var(--g-opacidade-area); }
 .g-vazio { fill: var(--text-soft); font-family: var(--font-text); font-size: var(--texto-legenda); }
 
 /* uma classe por série: o JS diz qual série é, o CSS diz de que cor */
@@ -866,7 +873,12 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
 /* A forma vem depois da cor: linha nunca é preenchida, ponto nunca é traçado.
    Sem esta ordem o fill da série vaza para o path e a linha vira mancha. */
 .g-linha { fill: none; stroke-width: var(--g-espessura); stroke-linecap: round; stroke-linejoin: round; }
-.g-area { stroke: none; opacity: var(--g-opacidade-area); }
+.g-area { stroke: none; }
+/* o stop herda a cor da série; a opacidade do topo vem de --g-opacidade-area */
+.g-area-grad { stop-opacity: var(--g-opacidade-area); }
+.serie-principal stop, stop.serie-principal { stop-color: var(--accent); }
+.serie-treino stop, stop.serie-treino { stop-color: var(--treino); }
+.serie-verde stop, stop.serie-verde { stop-color: var(--verde); }
 .g-ponto { r: var(--g-raio-ponto); stroke: none; }
 .serie-apagada.g-ponto { r: var(--g-raio-ponto-p); }
 .g-barra { stroke: none; }
@@ -1247,3 +1259,187 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 @media (min-width: 1280px) {
   .grade { column-count: 3; }
 }
+
+
+/* ---------------- abas com sublinhado (referência Stitch) ----------------
+   No celular a navegação continua na barra inferior, convenção do iOS e
+   melhor para o polegar; estas abas servem de sub-navegação dentro da tela. */
+
+.abas-linha {
+  display: flex;
+  gap: var(--esp-6);
+  overflow-x: auto;
+  border-bottom: var(--traco) solid var(--border);
+  margin-bottom: var(--esp-6);
+  scrollbar-width: none;
+}
+.abas-linha::-webkit-scrollbar { display: none; }
+.aba-linha {
+  padding: 0 0 var(--esp-2);
+  min-height: var(--toque);
+  background: none;
+  border: 0;
+  border-bottom: var(--traco-grosso) solid transparent;
+  color: var(--text-soft);
+  font-size: var(--texto-corpo);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.aba-linha.ativa { color: var(--text); font-weight: var(--peso-semi); border-bottom-color: var(--text); }
+
+/* ---------------- lista agrupada (Ajustes) ---------------- */
+
+/* o grupo inteiro cabe numa coluna: título e cartão não se separam */
+.grupo { display: flex; flex-direction: column; gap: var(--esp-2); break-inside: avoid; margin-bottom: var(--esp-4); }
+.grupo-titulo {
+  font-size: var(--texto-mini);
+  font-weight: var(--peso-semi);
+  color: var(--text-soft);
+  padding: 0 var(--esp-1);
+}
+.grupo-corpo {
+  background: var(--card);
+  border: var(--traco) solid var(--border);
+  border-radius: var(--raio-cartao);
+  box-shadow: var(--sombra-cartao);
+  overflow: hidden;
+}
+.grupo-corpo > .linha { padding: var(--esp-3) var(--esp-5); border-top: var(--traco) solid var(--border); }
+.grupo-corpo > .linha:first-child { border-top: 0; }
+.grupo-corpo > .linha.tocavel:hover { background: var(--bg); }
+
+/* ---------------- grade da semana ----------------
+   Dias em colunas, horas em linhas. O JS entrega minutos; a conversão para
+   pixel acontece aqui, como na linha do tempo. */
+
+.semana {
+  --sem-px-minuto: 0.62;
+  --sem-coluna-horas: 44px;
+  display: grid;
+  grid-template-columns: var(--sem-coluna-horas) repeat(7, minmax(0, 1fr));
+  gap: var(--esp-1);
+}
+.semana-cabecalho {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--card);
+  text-align: center;
+  font-size: var(--texto-mini);
+  color: var(--text-soft);
+  padding-bottom: var(--esp-1);
+}
+.semana-cabecalho.hoje { color: var(--accent-texto); font-weight: var(--peso-semi); }
+.semana-horas {
+  position: relative;
+  height: calc((var(--lt-minuto-final) - var(--lt-minuto-inicial)) * var(--sem-px-minuto) * 1px);
+}
+.semana-hora {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc((var(--inicio) - var(--lt-minuto-inicial)) * var(--sem-px-minuto) * 1px);
+  font-size: var(--texto-eixo);
+  color: var(--text-soft);
+  text-align: right;
+  transform: translateY(-50%);
+}
+.semana-coluna {
+  position: relative;
+  height: calc((var(--lt-minuto-final) - var(--lt-minuto-inicial)) * var(--sem-px-minuto) * 1px);
+  border-left: var(--traco) solid var(--grid);
+}
+.semana-linha {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc((var(--inicio) - var(--lt-minuto-inicial)) * var(--sem-px-minuto) * 1px);
+  border-top: var(--traco) solid var(--grid);
+}
+
+/* previsto em contorno tracejado, realizado preenchido */
+.sem-bloco {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: calc((var(--inicio) - var(--lt-minuto-inicial)) * var(--sem-px-minuto) * 1px);
+  height: max(var(--esp-3), calc((var(--fim) - var(--inicio)) * var(--sem-px-minuto) * 1px));
+  border-radius: var(--raio-p);
+  border: var(--traco) dashed var(--cor);
+  background: none;
+  padding: 0 var(--esp-1);
+  overflow: hidden;
+  font-size: var(--texto-eixo);
+  color: var(--text-soft);
+  text-align: left;
+  cursor: pointer;
+  z-index: 1;
+}
+.sem-bloco.feito {
+  border-style: solid;
+  background: var(--tint);
+  color: var(--text);
+  z-index: 2;
+}
+.sem-bloco-titulo { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.semana-agora {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc((var(--inicio) - var(--lt-minuto-inicial)) * var(--sem-px-minuto) * 1px);
+  border-top: var(--traco-grosso) solid var(--vermelho);
+  z-index: 5;
+  pointer-events: none;
+}
+.semana-agora::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: var(--esp-2);
+  height: var(--esp-2);
+  border-radius: 50%;
+  background: var(--vermelho);
+}
+
+/* ---------------- lista do dia (Hoje) ---------------- */
+
+.dia-linha { display: flex; align-items: center; gap: var(--esp-3); }
+.dia-hora {
+  width: var(--esp-9);
+  flex: none;
+  font-size: var(--texto-corpo);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-soft);
+}
+.dia-marca {
+  width: var(--esp-2);
+  height: var(--esp-2);
+  border-radius: 50%;
+  flex: none;
+  background: var(--cor, var(--text-soft));
+}
+.dia-real { font-size: var(--texto-mini); font-variant-numeric: tabular-nums; }
+.dia-real.verde { color: var(--verde-texto); }
+.dia-real.amarelo { color: var(--amarelo-texto); }
+.dia-real.vermelho { color: var(--vermelho-texto); }
+
+/* ---------------- cartão pequeno e barras horizontais ---------------- */
+
+.cartao.pequeno .metrica-num { font-size: var(--texto-metrica-p); }
+.cartao.pequeno .metrica-legenda { font-size: var(--texto-mini); }
+
+.barras-h { display: flex; flex-direction: column; gap: var(--esp-4); }
+.barra-h { display: flex; flex-direction: column; gap: var(--esp-1); }
+.barra-h-topo { display: flex; justify-content: space-between; gap: var(--esp-2); align-items: baseline; }
+.barra-h-valor { font-size: var(--texto-mini); font-weight: var(--peso-forte); font-variant-numeric: tabular-nums; }
+.barra-h-trilho { height: var(--esp-2); border-radius: var(--raio-total); background: var(--tinta-neutra); overflow: hidden; }
+/* --fracao vem do JS como número de 0 a 1 */
+.barra-h-cheia { height: 100%; width: calc(var(--fracao, 0) * 100%); border-radius: var(--raio-total); background: var(--accent); }
+
+.semana-rolagem { overflow-x: auto; }
+.semana { min-width: 640px; }
+.girar-180 { transform: rotate(180deg); }
+.botao-nota { font-size: var(--texto-mini); font-weight: var(--peso-normal); opacity: .85; margin-left: var(--esp-1); }
+.cabecalho-acoes { display: flex; gap: var(--esp-1); align-items: center; }

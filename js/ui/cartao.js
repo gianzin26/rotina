@@ -15,7 +15,7 @@ import { icone } from './icones.js';
  */
 export function cartao(opcoes, ...conteudo) {
   const o = typeof opcoes === 'string' || opcoes == null ? { titulo: opcoes } : opcoes;
-  const classes = ['cartao', o.largo && 'largo', o.alto && 'alto', o.classe].filter(Boolean).join(' ');
+  const classes = ['cartao', o.pequeno && 'pequeno', o.classe].filter(Boolean).join(' ');
 
   const cabecalho = (o.titulo || o.periodo || o.acao) && h('div', { class: 'cartao-topo' },
     h('div', { class: 'cartao-identidade' },
@@ -34,7 +34,9 @@ export function cartao(opcoes, ...conteudo) {
       o.delta && h('span', { class: `delta ${classeSituacao(o.delta.situacao)}` },
         o.delta.sentido && icone(o.delta.sentido),
         o.delta.texto)),
-    o.legenda && h('span', { class: 'metrica-legenda' }, o.legenda));
+    o.legenda && h('span', {
+      class: `metrica-legenda ${o.legendaSituacao ? classeSituacao(o.legendaSituacao) : ''}`.trim(),
+    }, o.legenda));
 
   return h('section', { class: classes }, cabecalho, metrica, ...conteudo);
 }

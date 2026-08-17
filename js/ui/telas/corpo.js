@@ -1,0 +1,176 @@
+// ui/telas/corpo.js — peso, hora de acordar, sono e cintura.
+
+import { horasDeSono } from '../../nucleo/agenda.js';
+import { cinturas, resumo as resumoPeso, serie as seriePeso } from '../../nucleo/peso.js';
+import { estado, registroDoDia, upsertDia } from '../../nucleo/store.js';
+import {
+  dataCurta, diaLogico, diffDias, duracao, hhmm, media, min, nUm, somaDias,
+} from '../../nucleo/util.js';
+import { cartao, dado, fileiraDados, linha } from '../cartao.js';
+import { anexar, h, vazio } from '../dom.js';
+import { aviso, escolherNumero } from '../folha.js';
+import { grafico } from '../grafico.js';
+import { icone } from '../icones.js';
+
+const JANELA = 30;
+
+export function render(tela, ctx) {
+  const dia = diaLogico();
+
+  anexar(tela,
+    h('header', { class: 'cabecalho' },
+      h('div', {},
+        h('h1', {}, 'Corpo'),
+        h('p', { class: 'cabecalho-sub' }, 'Peso, sono e medidas'))),
+    h('div', { class: 'grade' },
+      cartaoPeso(dia, ctx),
+      cartaoHoraDeAcordar(dia),
+      cartaoSono(dia),
+      cartaoCintura(dia, ctx)));
+}
+
+/* ---------------- peso ---------------- */
+
+function cartaoPeso(dia, ctx) {
+  const s = seriePeso();
+  const r = resumoPeso();
+  const hojeReg = registroDoDia('peso', dia);
+
+  const registrar = () => escolherNumero({
+    titulo: 'Peso de hoje', rotulo: 'Quilos', valor: hojeReg?.kg ?? r.media7 ?? '', passo: 0.1, sufixo: 'kg',
+    aoEscolher: (v) => { upsertDia('peso', dia, { kg: v }); aviso('Peso registrado.'); ctx.recarregar(); },
+    aoApagar: hojeReg?.kg != null ? () => { upsertDia('peso', dia, { kg: null }); ctx.recarregar(); } : null,
+  });
+
+  const v = r.variacaoSemana;
+  const [gMin, gMax] = r.ganhoAlvo;
+  const situacao = v == null ? null : v >= gMin && v <= gMax ? 'noAlvo' : v > 0 ? 'deriva' : 'fora';
+
+  const corpo = [];
+  if (s.length) {
+    const base = s[0].data;
+    const pontos = s.map((p) => ({ x: diffDias(base, p.data), y: p.kg }));
+    const linhaMedia = s.filter((p) => p.media7 != null).map((p) => ({ x: diffDias(base, p.data), y: p.media7 }));
+    corpo.push(grafico({
+      altura: 160, descricao: 'peso diário e média de 7 dias',
+      formatoY: (y) => `${nUm(y, 1)} kg`, meta: r.alvo,
+      rotulosX: [s[0], s[Math.floor(s.length / 2)], s[s.length - 1]]
+        .map((p) => ({ x: diffDias(base, p.data), texto: dataCurta(p.data) })),
+      series: [
+        { tipo: 'pontos', serie: 'serie-apagada', pontos },
+        { tipo: 'linha', serie: 'serie-principal', pontos: linhaMedia },
+      ],
+    }));
+  } else {
+    corpo.push(vazio('Registre o peso por alguns dias para ver a curva.'));
+  }
+
+  corpo.push(
+    fileiraDados(
+      dado('Hoje', hojeReg?.kg != null ? nUm(hojeReg.kg, 1) : 'registrar', {
+        sufixo: hojeReg?.kg != null ? 'kg' : null, aoTocar: registrar,
+      }),
+      dado('Alvo', r.alvo ? nUm(r.alvo, 0) : '—', { sufixo: r.alvo ? 'kg' : null }),
+      dado('Falta', r.faltaParaAlvo != null ? nUm(Math.abs(r.faltaParaAlvo), 1) : '—', {
+        sufixo: r.faltaParaAlvo != null ? 'kg' : null,
+      })),
+    ...r.alertas.map((a) => h('p', { class: `alerta ${a.nivel === 'fora' ? 'vermelho' : ''}` }, a.texto)),
+    h('button', { class: 'botao primario largura-total', onclick: registrar },
+      icone(hojeReg?.kg != null ? 'lapis' : 'mais'),
+      hojeReg?.kg != null ? 'Corrigir peso de hoje' : 'Registrar peso de hoje'));
+
+  return cartao({
+    titulo: 'Peso',
+    periodo: 'Média de 7 dias',
+    metrica: r.media7 != null ? nUm(r.media7, 1) : '—',
+    unidade: 'kg',
+    legenda: v != null
+      ? `${v >= 0 ? '+' : '−'}${nUm(Math.abs(v), 2)} kg esta semana`
+      : 'aguardando 7 dias de pesagem',
+    legendaSituacao: situacao,
+  }, ...corpo);
+}
+
+/* ---------------- hora de acordar ---------------- */
+
+function cartaoHoraDeAcordar(dia) {
+  const pontos = [];
+  const rotulosX = [];
+  for (let i = JANELA - 1; i >= 0; i--) {
+    const d = somaDias(dia, -i);
+    const s = registroDoDia('sono', d);
+    const x = JANELA - 1 - i;
+    if (s?.acordou) pontos.push({ x, y: min(s.acordou) });
+    if (i === JANELA - 1 || i === Math.floor(JANELA / 2) || i === 0) rotulosX.push({ x, texto: dataCurta(d) });
+  }
+  const plano = estado.rotina.find((r) => r.tipo === 'acordar');
+  const alvo = plano ? min(plano.inicio) : null;
+  const m = media(pontos.map((p) => p.y));
+
+  return cartao({
+    titulo: 'Hora de acordar',
+    periodo: 'Últimos 30 dias',
+    metrica: m != null ? hhmm(Math.round(m)) : '—',
+    legenda: alvo != null ? `Média · alvo ${hhmm(alvo)}` : 'Média',
+  },
+    grafico({
+      altura: 160, descricao: 'hora de acordar nos últimos 30 dias',
+      yInvertido: true, formatoY: (y) => hhmm(y), rotulosX, meta: alvo,
+      series: [{ tipo: 'linha', serie: 'serie-principal', marcadores: true, pontos }],
+    }));
+}
+
+/* ---------------- sono ---------------- */
+
+function cartaoSono(dia) {
+  const pontos = [];
+  const rotulosX = [];
+  for (let i = JANELA - 1; i >= 0; i--) {
+    const d = somaDias(dia, -i);
+    const hS = horasDeSono(d);
+    const x = JANELA - 1 - i;
+    if (hS != null) pontos.push({ x, y: hS, situacao: hS < 6 ? 'fora' : null });
+    if (i === JANELA - 1 || i === Math.floor(JANELA / 2) || i === 0) rotulosX.push({ x, texto: dataCurta(d) });
+  }
+  const m = media(pontos.map((p) => p.y));
+  const curtas = pontos.filter((p) => p.y < 6).length;
+
+  return cartao({
+    titulo: 'Sono',
+    periodo: 'Últimos 30 dias',
+    metrica: m != null ? duracao(m * 60) : '—',
+    legenda: curtas ? `${curtas} noites abaixo de 6 h` : 'Média por noite',
+    legendaSituacao: curtas ? 'fora' : null,
+  },
+    grafico({
+      altura: 160, descricao: 'horas de sono por noite', base0: true, meta: 6,
+      formatoY: (y) => `${Math.round(y)}h`, rotulosX,
+      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
+    }));
+}
+
+/* ---------------- cintura ---------------- */
+
+function cartaoCintura(dia, ctx) {
+  const lista = cinturas();
+  const ultima = lista[0] || null;
+  const registrar = () => escolherNumero({
+    titulo: 'Cintura', rotulo: 'Centímetros', valor: ultima?.cinturaCm ?? '', passo: 0.5, sufixo: 'cm',
+    aoEscolher: (v) => { upsertDia('peso', dia, { cinturaCm: v }); aviso('Cintura registrada.'); ctx.recarregar(); },
+  });
+  const atrasada = ultima ? diffDias(ultima.data, dia) >= 7 : true;
+
+  return cartao({
+    titulo: 'Cintura',
+    periodo: 'Entrada semanal',
+    metrica: ultima ? nUm(ultima.cinturaCm, 1) : '—',
+    unidade: 'cm',
+    legenda: ultima ? `Medida em ${dataCurta(ultima.data)}` : 'Nenhuma medida ainda',
+  },
+    atrasada && h('p', { class: 'texto-suave' }, 'Faz uma semana ou mais desde a última medida.'),
+    h('button', { class: 'botao largura-total', onclick: registrar }, icone('mais'), 'Registrar cintura'),
+    lista.length > 1 && h('div', { class: 'lista' }, lista.slice(0, 6).map((c) => linha(
+      h('span', { class: 'linha-titulo' }, dataCurta(c.data)),
+      h('span', { class: 'dado-valor' }, nUm(c.cinturaCm, 1), h('span', { class: 'dado-sufixo' }, 'cm')),
+    ))));
+}

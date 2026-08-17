@@ -1,4 +1,5 @@
-// ui/telas/ajustes.js — editores de rotina, trajetos, sessões, tolerâncias e backup.
+// ui/telas/ajustes.js — lista agrupada: rotina, metas, dados e perfil.
+// Sem gráfico; cada linha abre uma folha de edição.
 
 import { resumoSemana } from '../../nucleo/resumo.js';
 import {
@@ -6,7 +7,7 @@ import {
 } from '../../nucleo/store.js';
 import { DIAS, diaLogico, inicioSemana, uid } from '../../nucleo/util.js';
 import { baixarJSON, copiar, lerArquivo } from '../arquivos.js';
-import { cartao, etiqueta, linha } from '../cartao.js';
+import { etiqueta, linha } from '../cartao.js';
 import { anexar, h, vazio } from '../dom.js';
 import {
   aviso, campo, confirmar, entradaHora, entradaNumero, entradaTexto, folha,
@@ -28,35 +29,104 @@ export function render(tela, ctx) {
     h('header', { class: 'cabecalho' },
       h('div', {},
         h('h1', {}, 'Ajustes'),
-        h('p', { class: 'cabecalho-sub' }, 'Rotina, trajetos, sessões e backup'))),
+        h('p', { class: 'cabecalho-sub' }, 'Rotina, metas, dados e perfil'))),
     h('div', { class: 'grade' },
-      cartaoPerfil(),
-      cartaoTolerancias(),
-      cartaoRotina(ctx),
-      cartaoTrajetos(ctx),
-      cartaoSessoes(ctx),
-      cartaoDados(ctx),
-      cartaoSobre()));
+      grupo('Rotina', [
+        item('Horários da semana', `${estado.rotina.length} atividades`, () => folhaRotina(ctx)),
+        item('Trajetos', `${estado.trajetos.length} rotas`, () => folhaTrajetos(ctx)),
+        item('Sessões de treino', `${estado.sessoesTreino.length} sessões`, () => folhaSessoes(ctx)),
+      ]),
+      grupo('Metas', [
+        item('Peso alvo', `${estado.perfil.pesoAlvo ?? '—'} kg`, () => folhaMetas(ctx)),
+        item('Calorias por dia', `${estado.perfil.kcalAlvo ?? '—'} kcal`, () => folhaMetas(ctx)),
+        item('Tolerâncias', 'Minutos de atraso aceitos', () => folhaTolerancias(ctx)),
+      ]),
+      grupo('Dados', [
+        item('Resumo da semana', 'Texto pronto para copiar', () => mostrarResumo()),
+        item('Exportar backup', 'Arquivo JSON com tudo', () => { const n = baixarJSON(); aviso(`Salvo: ${n}`); }),
+        item('Importar backup', 'Substitui os dados deste aparelho', () => abrirArquivo(ctx)),
+      ]),
+      grupo('Perfil', [
+        item('Nome', estado.perfil.nome || '—', () => folhaPerfil(ctx)),
+        item('Apagar tudo e recomeçar', 'Volta ao perfil de exemplo', async () => {
+          if (!await confirmar('Apagar tudo', 'Volta ao perfil de exemplo. Não dá para desfazer.', 'Apagar tudo', true)) return;
+          zerar(); aviso('Dados zerados.'); ctx.recarregar();
+        }, 'perigo'),
+      ])));
 }
 
-/* ---------------- perfil ---------------- */
+function grupo(titulo, itens) {
+  return h('section', { class: 'grupo' },
+    h('h2', { class: 'grupo-titulo' }, titulo),
+    h('div', { class: 'grupo-corpo' }, itens));
+}
 
-function cartaoPerfil() {
+function item(titulo, valor, aoTocar, variante) {
+  return linha(
+    [
+      h('span', { class: `linha-titulo ${variante === 'perigo' ? 'perigoso' : ''}`.trim() }, titulo),
+      valor && h('span', { class: 'linha-sub' }, valor),
+    ],
+    icone('chevronDireita'),
+    { aoTocar },
+  );
+}
+
+/** O input de arquivo precisa existir no documento para o clique valer. */
+function abrirArquivo(ctx) {
+  const entrada = h('input', {
+    type: 'file', accept: 'application/json,.json', class: 'oculto',
+    onchange: async (e) => {
+      const arquivo = e.target.files?.[0];
+      if (arquivo) {
+        try {
+          const dados = await lerArquivo(arquivo);
+          if (await confirmar('Importar backup', 'Isto substitui todos os dados deste dispositivo.', 'Importar', true)) {
+            substituirEstado(dados);
+            aviso('Backup importado.');
+            ctx.recarregar();
+          }
+        } catch (err) {
+          aviso(err.message);
+        }
+      }
+      entrada.remove();
+    },
+  });
+  document.body.append(entrada);
+  entrada.click();
+}
+
+/* ---------------- folhas ---------------- */
+
+function folhaPerfil(ctx) {
+  folha('Perfil', (fechar) => h('div', { class: 'pilha' },
+    campo('Nome', entradaTexto(estado.perfil.nome, (v) => mudar(() => { estado.perfil.nome = v; }))),
+    h('button', {
+      class: 'botao primario largura-total',
+      onclick: () => { fechar(); ctx.recarregar(); },
+    }, 'Pronto')));
+}
+
+function folhaMetas(ctx) {
   const p = estado.perfil;
   const set = (campos) => mudar(() => Object.assign(estado.perfil, campos));
-  return cartao({ titulo: 'Perfil e metas', subtitulo: 'Alvo de peso e calorias' },
-    campo('Nome', entradaTexto(p.nome, (v) => set({ nome: v }))),
+  folha('Metas', (fechar) => h('div', { class: 'pilha' },
     h('div', { class: 'grade-2' },
       campo('Peso alvo (kg)', entradaNumero(p.pesoAlvo, (v) => set({ pesoAlvo: v }), { step: 0.5 })),
       campo('Calorias/dia', entradaNumero(p.kcalAlvo, (v) => set({ kcalAlvo: v }), { step: 50 }))),
     h('div', { class: 'grade-2' },
-      campo('Ganho mínimo (kg/sem)', entradaNumero(p.ganhoSemanaAlvo?.[0], (v) => set({ ganhoSemanaAlvo: [v, p.ganhoSemanaAlvo?.[1] ?? 0.35] }), { step: 0.05 })),
-      campo('Ganho máximo (kg/sem)', entradaNumero(p.ganhoSemanaAlvo?.[1], (v) => set({ ganhoSemanaAlvo: [p.ganhoSemanaAlvo?.[0] ?? 0.2, v] }), { step: 0.05 }))));
+      campo('Ganho mínimo (kg/sem)', entradaNumero(p.ganhoSemanaAlvo?.[0],
+        (v) => set({ ganhoSemanaAlvo: [v, p.ganhoSemanaAlvo?.[1] ?? 0.35] }), { step: 0.05 })),
+      campo('Ganho máximo (kg/sem)', entradaNumero(p.ganhoSemanaAlvo?.[1],
+        (v) => set({ ganhoSemanaAlvo: [p.ganhoSemanaAlvo?.[0] ?? 0.2, v] }), { step: 0.05 }))),
+    h('button', {
+      class: 'botao primario largura-total',
+      onclick: () => { fechar(); ctx.recarregar(); },
+    }, 'Pronto')));
 }
 
-/* ---------------- tolerâncias ---------------- */
-
-function cartaoTolerancias() {
+function folhaTolerancias(ctx) {
   const t = estado.perfil.tolerancias || {};
   const linhas = [
     ['transito', 'Saída / deslocamento'],
@@ -67,36 +137,31 @@ function cartaoTolerancias() {
   const set = (tipo, campo2, v) => mudar(() => {
     estado.perfil.tolerancias[tipo] = { ...TOLERANCIAS_PADRAO[tipo], ...t[tipo], [campo2]: v ?? 0 };
   });
-
-  return cartao({
-    titulo: 'Tolerância',
-    subtitulo: 'Minutos de atraso aceitos por atividade',
-  },
+  folha('Tolerâncias', (fechar) => h('div', { class: 'pilha' },
     h('p', { class: 'texto-suave' },
-      'Até o verde está no alvo. Até o amarelo ainda conta como cumprido — serve para revelar deriva.'),
+      'Minutos de atraso. Até o verde está no alvo; até o amarelo ainda conta como cumprido.'),
     h('div', { class: 'lista' },
       linha(h('span', { class: 'linha-sub' }, 'Atividade'),
         [h('span', { class: 'linha-sub tol-col' }, 'verde'), h('span', { class: 'linha-sub tol-col' }, 'amarelo')]),
       linhas.map(([tipo, rotulo]) => linha(
         h('span', { class: 'linha-titulo' }, rotulo),
         [
-          entradaNumero(t[tipo]?.verde ?? TOLERANCIAS_PADRAO[tipo].verde, (v) => set(tipo, 'verde', v), { step: 1, min: 0, class: 'mini tol-col' }),
-          entradaNumero(t[tipo]?.amarelo ?? TOLERANCIAS_PADRAO[tipo].amarelo, (v) => set(tipo, 'amarelo', v), { step: 1, min: 0, class: 'mini tol-col' }),
+          entradaNumero(t[tipo]?.verde ?? TOLERANCIAS_PADRAO[tipo].verde,
+            (v) => set(tipo, 'verde', v), { step: 1, min: 0, class: 'mini tol-col' }),
+          entradaNumero(t[tipo]?.amarelo ?? TOLERANCIAS_PADRAO[tipo].amarelo,
+            (v) => set(tipo, 'amarelo', v), { step: 1, min: 0, class: 'mini tol-col' }),
         ],
-      ))));
+      ))),
+    h('button', {
+      class: 'botao primario largura-total',
+      onclick: () => { fechar(); ctx.recarregar(); },
+    }, 'Pronto')));
 }
 
-/* ---------------- rotina ---------------- */
-
-function cartaoRotina(ctx) {
-  const porDia = [...estado.rotina].sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
-  return cartao({
-    titulo: 'Rotina',
-    subtitulo: 'Atividades recorrentes da semana',
-    periodo: `${porDia.length} itens`,
-    largo: true,
-  },
-    h('div', { class: 'lista' }, porDia.map((it) => linha(
+function folhaRotina(ctx) {
+  const porHora = [...estado.rotina].sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
+  folha('Horários da semana', () => h('div', { class: 'pilha' },
+    h('div', { class: 'lista' }, porHora.map((it) => linha(
       [
         h('span', { class: 'linha-titulo' }, it.titulo),
         h('span', { class: 'linha-sub' }, (it.diasSemana || []).map((d) => DIAS[d]).join(' ')),
@@ -109,8 +174,42 @@ function cartaoRotina(ctx) {
       onclick: () => editarRotina({
         id: null, tipo: 'trabalho', titulo: '', diasSemana: [1, 2, 3, 4, 5], inicio: '08:00', fim: '09:00', local: '',
       }, ctx),
-    }, icone('mais'), 'Adicionar atividade'));
+    }, icone('mais'), 'Adicionar atividade')));
 }
+
+function folhaTrajetos(ctx) {
+  folha('Trajetos', () => h('div', { class: 'pilha' },
+    h('div', { class: 'lista' }, estado.trajetos.map((t) => linha(
+      [
+        h('span', { class: 'linha-titulo' }, `${t.origem} → ${t.destino}`),
+        h('span', { class: 'linha-sub' }, `estimado ${t.minutosEstimados} min`),
+      ],
+      icone('chevronDireita'),
+      { aoTocar: () => editarTrajeto(t, ctx) },
+    ))),
+    h('button', {
+      class: 'botao largura-total',
+      onclick: () => editarTrajeto({ id: null, origem: '', destino: '', minutosEstimados: 20, wazeUrl: '' }, ctx),
+    }, icone('mais'), 'Adicionar trajeto')));
+}
+
+function folhaSessoes(ctx) {
+  folha('Sessões de treino', () => h('div', { class: 'pilha' },
+    h('div', { class: 'lista' }, estado.sessoesTreino.map((s) => linha(
+      [
+        h('span', { class: 'linha-titulo' }, s.nome),
+        h('span', { class: 'linha-sub' }, `${s.exercicios.length} exercícios`),
+      ],
+      icone('chevronDireita'),
+      { aoTocar: () => editarSessao(s, ctx) },
+    ))),
+    h('button', {
+      class: 'botao largura-total',
+      onclick: () => editarSessao({ id: null, nome: '', exercicios: [] }, ctx),
+    }, icone('mais'), 'Adicionar sessão')));
+}
+
+/* ---------------- editores ---------------- */
 
 function editarRotina(item, ctx) {
   const novo = { ...item };
@@ -176,28 +275,6 @@ function editarRotina(item, ctx) {
   });
 }
 
-/* ---------------- trajetos ---------------- */
-
-function cartaoTrajetos(ctx) {
-  return cartao({
-    titulo: 'Trajetos',
-    subtitulo: 'Origem, destino e tempo estimado',
-    periodo: `${estado.trajetos.length} rotas`,
-  },
-    h('div', { class: 'lista' }, estado.trajetos.map((t) => linha(
-      [
-        h('span', { class: 'linha-titulo' }, `${t.origem} → ${t.destino}`),
-        h('span', { class: 'linha-sub' }, `estimado ${t.minutosEstimados} min`),
-      ],
-      icone('chevronDireita'),
-      { aoTocar: () => editarTrajeto(t, ctx) },
-    ))),
-    h('button', {
-      class: 'botao largura-total',
-      onclick: () => editarTrajeto({ id: null, origem: '', destino: '', minutosEstimados: 20, wazeUrl: '' }, ctx),
-    }, icone('mais'), 'Adicionar trajeto'));
-}
-
 function editarTrajeto(t, ctx) {
   const novo = { ...t };
   folha(t.id ? 'Editar trajeto' : 'Novo trajeto', (fechar) => h('div', { class: 'pilha' },
@@ -224,28 +301,6 @@ function editarTrajeto(t, ctx) {
         fechar(); ctx.recarregar();
       },
     }, 'Apagar trajeto')));
-}
-
-/* ---------------- sessões de treino ---------------- */
-
-function cartaoSessoes(ctx) {
-  return cartao({
-    titulo: 'Sessões de treino',
-    subtitulo: 'Exercícios de cada sessão',
-    periodo: `${estado.sessoesTreino.length} sessões`,
-  },
-    h('div', { class: 'lista' }, estado.sessoesTreino.map((s) => linha(
-      [
-        h('span', { class: 'linha-titulo' }, s.nome),
-        h('span', { class: 'linha-sub' }, `${s.exercicios.length} exercícios`),
-      ],
-      icone('chevronDireita'),
-      { aoTocar: () => editarSessao(s, ctx) },
-    ))),
-    h('button', {
-      class: 'botao largura-total',
-      onclick: () => editarSessao({ id: null, nome: '', exercicios: [] }, ctx),
-    }, icone('mais'), 'Adicionar sessão'));
 }
 
 function editarSessao(s, ctx) {
@@ -297,49 +352,6 @@ function editarSessao(s, ctx) {
   });
 }
 
-/* ---------------- dados ---------------- */
-
-function cartaoDados(ctx) {
-  const entrada = h('input', {
-    type: 'file', accept: 'application/json,.json', class: 'oculto',
-    onchange: async (e) => {
-      const arquivo = e.target.files?.[0];
-      if (!arquivo) return;
-      try {
-        const dados = await lerArquivo(arquivo);
-        if (!await confirmar('Importar backup', 'Isto substitui todos os dados deste dispositivo.', 'Importar', true)) return;
-        substituirEstado(dados);
-        aviso('Backup importado.');
-        ctx.recarregar();
-      } catch (err) {
-        aviso(err.message);
-      } finally {
-        e.target.value = '';
-      }
-    },
-  });
-
-  return cartao({ titulo: 'Dados', subtitulo: 'Resumo semanal e backup' },
-    h('button', { class: 'botao primario largura-total', onclick: () => mostrarResumo() },
-      icone('copiar'), 'Resumo da semana'),
-    h('button', {
-      class: 'botao largura-total',
-      onclick: () => { const n = baixarJSON(); aviso(`Salvo: ${n}`); },
-    }, icone('baixar'), 'Exportar backup (JSON)'),
-    h('button', { class: 'botao largura-total', onclick: () => entrada.click() },
-      icone('subir'), 'Importar backup'),
-    entrada,
-    h('p', { class: 'texto-suave' },
-      'Os dados ficam só neste navegador. Para levar para outro aparelho, exporte e importe o JSON.'),
-    h('button', {
-      class: 'botao perigo-texto largura-total',
-      onclick: async () => {
-        if (!await confirmar('Apagar tudo', 'Volta ao perfil de exemplo. Não dá para desfazer.', 'Apagar tudo', true)) return;
-        zerar(); aviso('Dados zerados.'); ctx.recarregar();
-      },
-    }, icone('lixeira'), 'Apagar tudo e recomeçar'));
-}
-
 function mostrarResumo() {
   const texto = resumoSemana(inicioSemana(diaLogico()));
   folha('Resumo da semana', () => h('div', { class: 'pilha' },
@@ -348,15 +360,4 @@ function mostrarResumo() {
       class: 'botao primario largura-total',
       onclick: () => copiar(texto).then(() => aviso('Copiado.')),
     }, icone('copiar'), 'Copiar')));
-}
-
-function cartaoSobre() {
-  return cartao({ titulo: 'Sobre', subtitulo: 'Funciona offline, na tela de início' },
-    h('p', { class: 'texto-suave' },
-      'Adicione à tela de início pelo menu de compartilhamento do Safari para usar sem conexão.'),
-    h('div', { class: 'lista' },
-      linha(h('span', { class: 'linha-titulo' }, 'Atividades na rotina'), etiqueta(String(estado.rotina.length))),
-      linha(h('span', { class: 'linha-titulo' }, 'Trajetos'), etiqueta(String(estado.trajetos.length))),
-      linha(h('span', { class: 'linha-titulo' }, 'Sessões de treino'), etiqueta(String(estado.sessoesTreino.length))),
-      linha(h('span', { class: 'linha-titulo' }, 'Pesagens registradas'), etiqueta(String(estado.registros.peso.length)))));
 }

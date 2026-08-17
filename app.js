@@ -5,20 +5,29 @@ import { iniciarAtualizacoes } from './js/ui/atualizacao.js';
 import { $, h, limpar } from './js/ui/dom.js';
 import { icone } from './js/ui/icones.js';
 import * as ajustes from './js/ui/telas/ajustes.js';
+import * as corpo from './js/ui/telas/corpo.js';
 import * as hoje from './js/ui/telas/hoje.js';
-import * as insights from './js/ui/telas/insights.js';
-import * as peso from './js/ui/telas/peso.js';
+import * as semana from './js/ui/telas/semana.js';
 import * as treino from './js/ui/telas/treino.js';
+import * as visaoGeral from './js/ui/telas/visaoGeral.js';
+
+/* Visão geral só entra na navegação onde há espaço para a grade densa.
+   No celular a lista de abas começa em Hoje, que é a tela de uso. */
+const VISAO_GERAL = { id: 'visao', rotulo: 'Visão geral', view: visaoGeral, soComputador: true };
 
 const ABAS = [
+  VISAO_GERAL,
   { id: 'hoje', rotulo: 'Hoje', view: hoje },
-  { id: 'insights', rotulo: 'Insights', view: insights },
+  { id: 'semana', rotulo: 'Semana', view: semana },
   { id: 'treino', rotulo: 'Treino', view: treino },
-  { id: 'peso', rotulo: 'Peso', view: peso },
+  { id: 'corpo', rotulo: 'Corpo', view: corpo },
   { id: 'ajustes', rotulo: 'Ajustes', view: ajustes },
 ];
 
-let abaAtual = 'hoje';
+const noComputador = () => window.matchMedia('(min-width: 900px)').matches;
+const abaInicial = () => (noComputador() ? 'visao' : 'hoje');
+
+let abaAtual = abaInicial();
 
 const tela = $('#tela');
 const rodape = $('#rodape');
@@ -33,6 +42,8 @@ function montarNavegacao() {
 
   for (const alvo of [abas, lateral]) {
     for (const aba of ABAS) {
+      // no celular a barra inferior não mostra Visão geral
+      if (aba.soComputador && alvo === abas) continue;
       alvo.append(h('button', {
         class: `aba ${aba.id === abaAtual ? 'ativa' : ''}`,
         'aria-current': aba.id === abaAtual ? 'page' : null,
@@ -59,7 +70,8 @@ function desenhar(preservarRolagem = true) {
 }
 
 function ir(id) {
-  if (!ABAS.some((a) => a.id === id)) id = 'hoje';
+  const alvo = ABAS.find((a) => a.id === id);
+  if (!alvo || (alvo.soComputador && !noComputador())) id = abaInicial();
   const mudou = id !== abaAtual;
   abaAtual = id;
   if (location.hash.slice(1) !== id) location.hash = id;
@@ -68,7 +80,7 @@ function ir(id) {
   if (mudou) window.scrollTo({ top: 0 });
 }
 
-window.addEventListener('hashchange', () => ir(location.hash.slice(1) || 'hoje'));
+window.addEventListener('hashchange', () => ir(location.hash.slice(1) || abaInicial()));
 
 const editando = (no) => !!no && (/^(INPUT|TEXTAREA|SELECT)$/.test(no.tagName) || no.isContentEditable);
 
@@ -102,6 +114,12 @@ window.addEventListener('storage', () => { carregar(); desenhar(); });
 definirRelatorDeFalha((mensagem) => alert(mensagem));
 
 carregar();
-ir(location.hash.slice(1) || 'hoje');
+ir(location.hash.slice(1) || abaInicial());
+
+/* Girar o aparelho ou redimensionar a janela pode tirar Visão geral do ar. */
+window.matchMedia('(min-width: 900px)').addEventListener('change', () => {
+  montarNavegacao();
+  if (abaAtual === 'visao' && !noComputador()) ir('hoje');
+});
 
 window.addEventListener('load', iniciarAtualizacoes);

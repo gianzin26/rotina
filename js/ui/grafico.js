@@ -21,9 +21,11 @@ function s(tag, attrs = {}) {
    - os dados param antes dos rótulos, para não passarem por baixo deles.
    Fica aqui, e não no CSS, porque o SVG precisa dos números para posicionar. */
 const MARGEM = { topo: 10, baixo: 22, esquerda: 0 };
-const FAIXA_ROTULO = 44; // reservado à direita para o rótulo do eixo Y
-const BARRA_MAX = 8;     // largura de barra medida na referência
-const BARRA_VAO = 4;     // vão entre barras
+const FAIXA_ROTULO = 42; // reservado à direita para o rótulo do eixo Y
+const BARRA_MAX = 4;     // barra de 4px com passo de 10, como na referência
+const BARRA_VAO = 6;
+
+let contadorGradiente = 0;
 
 /**
  * @param {object} cfg
@@ -61,8 +63,11 @@ export function grafico(cfg) {
 
 function desenharSvg(cfg, L, A) {
   const svg = s('svg', { viewBox: `0 0 ${L} ${A}`, width: L, height: A, class: 'g-svg' });
-  const larg = L - MARGEM.esquerda - FAIXA_ROTULO; // área dos dados
-  const alt = A - MARGEM.topo - MARGEM.baixo;
+  // cartão pequeno: sem eixo nem rótulo, o desenho ocupa tudo
+  const faixa = cfg.semRotulos ? 0 : FAIXA_ROTULO;
+  const baixo = cfg.semRotulos ? 2 : MARGEM.baixo;
+  const larg = L - MARGEM.esquerda - faixa; // área dos dados
+  const alt = A - MARGEM.topo - baixo;
 
   const todos = cfg.series.flatMap((se) => se.pontos).filter((p) => p && Number.isFinite(p.y));
   if (!todos.length || larg <= 0) {
@@ -78,8 +83,12 @@ function desenharSvg(cfg, L, A) {
   let y1 = cfg.yMax ?? Math.max(...ys);
   if (cfg.base0 && y0 > 0) y0 = 0;
   if (y0 === y1) { y0 -= 1; y1 += 1; }
-  const folga = (y1 - y0) * 0.1;
-  y0 -= folga; y1 += folga;
+  // com yMax explícito a escala é exatamente a pedida: os cortes saem redondos
+  if (cfg.yMax == null || cfg.yMin == null) {
+    const folga = (y1 - y0) * 0.1;
+    if (cfg.yMin == null) y0 -= folga;
+    if (cfg.yMax == null) y1 += folga;
+  }
   if (cfg.base0) y0 = 0; // barras nascem no zero, sem eixo negativo
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
 
@@ -90,8 +99,8 @@ function desenharSvg(cfg, L, A) {
   };
 
   /* grade horizontal de ponta a ponta + rótulo do eixo Y encostado na direita */
-  const nTicks = cfg.yTicks ?? 4;
-  for (let i = 0; i <= nTicks; i++) {
+  const nTicks = cfg.semRotulos ? 0 : (cfg.yTicks ?? 4);
+  for (let i = 0; i <= nTicks && !cfg.semRotulos; i++) {
     const y = y0 + ((y1 - y0) * i) / nTicks;
     const yy = Math.round(py(y)) + 0.5; // meia unidade: linha de 1px sem borrar
     svg.append(s('line', { x1: MARGEM.esquerda, x2: L, y1: yy, y2: yy, class: 'g-grade' }));
@@ -132,10 +141,18 @@ function desenharSvg(cfg, L, A) {
     } else if (se.tipo === 'area' || se.tipo === 'linha') {
       const d = pts.map((p, i) => `${i ? 'L' : 'M'}${px(p.x).toFixed(1)} ${py(p.y).toFixed(1)}`).join(' ');
       if (se.tipo === 'area') {
-        const base = py(y0);
+        // gradiente da cor da série até transparente, como na referência
+        const id = `grad-${++contadorGradiente}`;
+        const defs = s('defs');
+        const grad = s('linearGradient', { id, x1: 0, x2: 0, y1: 0, y2: 1 });
+        grad.append(s('stop', { offset: '0%', class: `${classe} g-area-grad` }));
+        grad.append(s('stop', { offset: '100%', class: `${classe}`, 'stop-opacity': 0 }));
+        defs.append(grad);
+        svg.append(defs);
+        const base = A - baixo;
         svg.append(s('path', {
           d: `${d} L${px(pts[pts.length - 1].x).toFixed(1)} ${base.toFixed(1)} L${px(pts[0].x).toFixed(1)} ${base.toFixed(1)} Z`,
-          class: `${classe} g-area`,
+          class: 'g-area', fill: `url(#${id})`,
         }));
       }
       svg.append(s('path', { d, class: `${classe} g-linha` }));
@@ -152,10 +169,10 @@ function desenharSvg(cfg, L, A) {
   }
 
   /* rótulos de data no eixo X */
-  for (const r of cfg.rotulosX || []) {
+  for (const r of (cfg.semRotulos ? [] : cfg.rotulosX || [])) {
     const x = px(r.x);
     const t = s('text', {
-      x: Math.min(Math.max(x, 14), L - FAIXA_ROTULO - 4),
+      x: Math.min(Math.max(x, 14), L - faixa - 4),
       y: A - 6, 'text-anchor': 'middle', class: 'g-rotulo',
     });
     t.textContent = r.texto;

@@ -8,7 +8,7 @@
 // nova e só troca quando a pessoa toca em Atualizar — assim nenhuma tela fica
 // com metade dos arquivos velhos e metade novos.
 
-const VERSAO = 'rotina-99895e6580b2';
+const VERSAO = 'rotina-1f4055291ff8';
 
 const ARQUIVOS = [
   './',
@@ -36,10 +36,11 @@ const ARQUIVOS = [
   './js/ui/icones.js',
   './js/ui/linhaDoTempo.js',
   './js/ui/telas/ajustes.js',
+  './js/ui/telas/corpo.js',
   './js/ui/telas/hoje.js',
-  './js/ui/telas/insights.js',
-  './js/ui/telas/peso.js',
+  './js/ui/telas/semana.js',
   './js/ui/telas/treino.js',
+  './js/ui/telas/visaoGeral.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
