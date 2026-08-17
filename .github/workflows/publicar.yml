@@ -1,0 +1,53 @@
+name: Publicar no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Permissões mínimas para o deploy oficial de Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uma publicação por vez; a mais recente vence.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Carimba o sw.js com o hash do conteúdo. É isto que faz a atualização
+      # chegar sozinha ao iPhone: cache novo a cada publicação com mudança real.
+      - name: Versionar o service worker
+        run: node ferramentas/versionar.js
+
+      # Só o app vai para o ar. A especificação e as ferramentas ficam no
+      # repositório, fora do site.
+      - name: Montar o site
+        run: |
+          mkdir -p _site
+          cp index.html app.js styles.css manifest.json sw.js _site/
+          cp -r js icons _site/
+          echo "Publicado: $(grep -o "rotina-[a-f0-9]*" _site/sw.js | head -1)"
+          find _site -type f | sort
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

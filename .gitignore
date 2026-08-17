@@ -1,0 +1,9 @@
+# A especificação descreve uma rotina real (locais, horários, peso). Fica na
+# máquina, fora do repositório público.
+especificacao-app-rotina*.md
+
+# Backups exportados pelo próprio app
+rotina-*.json
+
+_site/
+.DS_Store
