@@ -23,9 +23,29 @@ Depois abra `http://localhost:8123`.
 2. Em **Settings → Pages**, escolha a branch e a pasta `/ (root)`.
 3. Abra a URL no Safari do iPhone e use **Compartilhar → Adicionar à Tela de Início**.
 
-A cada publicação, troque a constante `VERSAO` em [sw.js](sw.js) (`rotina-v1` →
-`rotina-v2`, e assim por diante). Sem isso o service worker continua servindo os
-arquivos antigos do cache.
+O deploy é automático: [.github/workflows/publicar.yml](.github/workflows/publicar.yml)
+roda a cada push na `main`, carimba a versão do service worker e publica.
+
+### Como a atualização chega ao iPhone
+
+`ferramentas/versionar.js` calcula um hash do conteúdo de todos os arquivos
+servidos e escreve esse hash em `VERSAO`, no `sw.js`. Mudou um byte do app, muda
+o nome do cache; não mudou, a versão fica igual e ninguém recebe atualização
+fantasma. O hash normaliza CRLF, então bate igual no Windows e no runner do
+GitHub.
+
+O service worker novo instala e **espera** — não assume sozinho. O app procura
+versão nova a cada 30 minutos, ao voltar para a tela e ao reconectar (é o que
+importa no iPhone, onde o app fica suspenso). Quando encontra, mostra a barra
+"Nova versão disponível". Ao tocar em **Atualizar**, o worker assume, a página
+recarrega e todos os arquivos vêm da mesma versão — nunca metade novos, metade
+velhos. O cache antigo é apagado na ativação.
+
+Para carimbar a versão localmente, sem publicar:
+
+```bash
+node ferramentas/versionar.js
+```
 
 ## Estrutura
 
@@ -96,6 +116,10 @@ dados de um para o outro, use **Ajustes → Exportar backup (JSON)** e
 O app já vem com um perfil de exemplo carregado — rotina, trajetos, sessões de
 treino e metas. Tudo é editável em **Ajustes**, e **Apagar tudo e recomeçar**
 volta para esse perfil.
+
+O exemplo é **genérico de propósito**. Este repositório é público, e rotina de
+pessoa real é agenda de quando ela não está em casa. A sua rotina de verdade
+você configura no aparelho: ela fica no `localStorage` e nunca sai dali.
 
 ## Atalhos de teclado (desktop)
 
