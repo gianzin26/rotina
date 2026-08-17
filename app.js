@@ -11,9 +11,9 @@ import * as semana from './js/ui/telas/semana.js';
 import * as treino from './js/ui/telas/treino.js';
 import * as visaoGeral from './js/ui/telas/visaoGeral.js';
 
-/* Visão geral só entra na navegação onde há espaço para a grade densa.
-   No celular a lista de abas começa em Hoje, que é a tela de uso. */
-const VISAO_GERAL = { id: 'visao', rotulo: 'Visão geral', view: visaoGeral, soComputador: true };
+/* Visão geral existe nos dois tamanhos. No celular só o rótulo encolhe, para
+   caber seis abas na barra; a tela inicial continua sendo Hoje. */
+const VISAO_GERAL = { id: 'visao', rotulo: 'Visão geral', rotuloCurto: 'Geral', view: visaoGeral };
 
 const ABAS = [
   VISAO_GERAL,
@@ -42,13 +42,14 @@ function montarNavegacao() {
 
   for (const alvo of [abas, lateral]) {
     for (const aba of ABAS) {
-      // no celular a barra inferior não mostra Visão geral
-      if (aba.soComputador && alvo === abas) continue;
+      // a barra inferior é estreita: usa o rótulo curto quando existe
+      const rotulo = alvo === abas ? aba.rotuloCurto || aba.rotulo : aba.rotulo;
       alvo.append(h('button', {
         class: `aba ${aba.id === abaAtual ? 'ativa' : ''}`,
+        'aria-label': rotulo === aba.rotulo ? null : aba.rotulo,
         'aria-current': aba.id === abaAtual ? 'page' : null,
         onclick: () => ir(aba.id),
-      }, icone(aba.id), h('span', {}, aba.rotulo)));
+      }, icone(aba.id), h('span', {}, rotulo)));
     }
   }
 }
@@ -70,8 +71,8 @@ function desenhar(preservarRolagem = true) {
 }
 
 function ir(id) {
-  const alvo = ABAS.find((a) => a.id === id);
-  if (!alvo || (alvo.soComputador && !noComputador())) id = abaInicial();
+  // hash desconhecido (link velho, digitação) cai na tela inicial do aparelho
+  if (!ABAS.some((a) => a.id === id)) id = abaInicial();
   const mudou = id !== abaAtual;
   abaAtual = id;
   if (location.hash.slice(1) !== id) location.hash = id;
@@ -116,10 +117,8 @@ definirRelatorDeFalha((mensagem) => alert(mensagem));
 carregar();
 ir(location.hash.slice(1) || abaInicial());
 
-/* Girar o aparelho ou redimensionar a janela pode tirar Visão geral do ar. */
-window.matchMedia('(min-width: 900px)').addEventListener('change', () => {
-  montarNavegacao();
-  if (abaAtual === 'visao' && !noComputador()) ir('hoje');
-});
+/* Girar o aparelho ou redimensionar a janela troca a barra pela lateral, e com
+   isso o rótulo de Visão geral. A aba em si continua onde estava. */
+window.matchMedia('(min-width: 900px)').addEventListener('change', montarNavegacao);
 
 window.addEventListener('load', iniciarAtualizacoes);
