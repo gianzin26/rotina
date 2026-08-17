@@ -94,6 +94,7 @@
   --texto-legenda: 14px;   /* Text — seletor de período */
   --texto-mini: 13px;      /* Text — linhas de lista secundárias */
   --texto-eixo: 10px;      /* Text — rótulo de eixo */
+  --texto-menu: 11px;      /* Text — rótulo da barra de abas */
 
   --peso-normal: 400;
   --peso-medio: 500;
@@ -147,6 +148,10 @@
   --aviso-acima: 96px;
   --icone-p: 16px;
   --icone-m: 20px;
+  --icone-menu: 24px;      /* a arte do menu tem margem própria, pede mais área */
+  /* O preto do menu é o do próprio arquivo dos ícones (#000), não o --text
+     do app (#111827), para o rótulo bater exatamente com o desenho. */
+  --preto-menu: #000000;
   --icone-g: 24px;
 
   /* ---- linha do tempo ----
@@ -257,6 +262,14 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .linha-sub.aceso { color: var(--accent-texto); }
 
+.creditos {
+  margin-top: var(--esp-5);
+  text-align: center;
+  font-size: var(--texto-legenda);
+  color: var(--text-soft);
+}
+.creditos a { color: var(--accent-texto); }
+
 #tela {
   padding: var(--esp-4) var(--esp-4) calc(var(--altura-abas) + var(--folga-rodape) + env(safe-area-inset-bottom));
   max-width: var(--largura-conteudo);
@@ -301,12 +314,29 @@ button { -webkit-tap-highlight-color: transparent; }
   min-height: var(--toque);
   background: none;
   border: 0;
-  color: var(--text-soft);
-  font-size: var(--texto-eixo);
+  color: var(--preto-menu);
+  font-size: var(--texto-menu);
   cursor: pointer;
 }
-.aba .icone { width: var(--icone-m); height: var(--icone-m); }
-.aba.ativa { color: var(--accent-texto); }
+/* A arte original entra como máscara: o desenho é o do arquivo, a cor vem
+   daqui. Assim o ícone fica preto sem eu redesenhar nada. */
+.aba-icone {
+  width: var(--icone-menu);
+  height: var(--icone-menu);
+  flex: none;
+  background-color: currentColor;
+  -webkit-mask-image: var(--arte-aba);
+  mask-image: var(--arte-aba);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+/* Tudo preto, como os ícones. O que separa a aba atual é o peso da letra, não
+   uma cor mais fraca — desbotar traria o cinza de volta. */
+.aba.ativa { color: var(--preto-menu); font-weight: var(--peso-forte); }
 
 /* ---------------- cabeçalho de tela ---------------- */
 
@@ -1255,7 +1285,7 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
     font-weight: var(--peso-medio);
   }
   #lateral .aba:hover { background: var(--bg); }
-  #lateral .aba.ativa { background: var(--tinta-accent); color: var(--accent-texto); font-weight: var(--peso-semi); }
+  #lateral .aba.ativa { background: var(--tinta-accent); color: var(--preto-menu); font-weight: var(--peso-semi); }
 
   #abas { display: none; }
 

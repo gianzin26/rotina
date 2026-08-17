@@ -60,7 +60,11 @@ export function render(tela, ctx) {
           if (!await confirmar('Apagar tudo', 'Volta ao perfil de exemplo. Não dá para desfazer.', 'Apagar tudo', true)) return;
           zerar(); aviso('Dados zerados.'); ctx.recarregar();
         }), 'perigo'),
-      ])));
+      ]),
+      // a licença gratuita do Icons8 pede crédito visível com link
+      h('p', { class: 'creditos' },
+        'Ícones do menu por ',
+        h('a', { href: 'https://icons8.com', target: '_blank', rel: 'noopener' }, 'Icons8'))));
 }
 
 /**

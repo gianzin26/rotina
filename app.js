@@ -3,7 +3,7 @@
 import { desligar as desligarDemo, ligado as demoLigado } from './js/nucleo/demo.js';
 import { carregar, definirRelatorDeFalha } from './js/nucleo/store.js';
 import { iniciarAtualizacoes } from './js/ui/atualizacao.js';
-import { $, h, limpar } from './js/ui/dom.js';
+import { $, h, limpar, variaveis } from './js/ui/dom.js';
 import { icone } from './js/ui/icones.js';
 import * as ajustes from './js/ui/telas/ajustes.js';
 import * as corpo from './js/ui/telas/corpo.js';
@@ -45,12 +45,16 @@ function montarNavegacao() {
     for (const aba of ABAS) {
       // a barra inferior é estreita: usa o rótulo curto quando existe
       const rotulo = alvo === abas ? aba.rotuloCurto || aba.rotulo : aba.rotulo;
+      // o ícone do menu é a arte original, aplicada como máscara para receber
+      // a cor do CSS; a forma vem do arquivo, sem redesenho
       alvo.append(h('button', {
         class: `aba ${aba.id === abaAtual ? 'ativa' : ''}`,
         'aria-label': rotulo === aba.rotulo ? null : aba.rotulo,
         'aria-current': aba.id === abaAtual ? 'page' : null,
         onclick: () => ir(aba.id),
-      }, icone(aba.id), h('span', {}, rotulo)));
+      }, variaveis(h('span', { class: 'aba-icone', 'aria-hidden': 'true' }),
+        { 'arte-aba': `url("./icons/nav/${aba.id}.png")` }),
+      h('span', {}, rotulo)));
     }
   }
 }
