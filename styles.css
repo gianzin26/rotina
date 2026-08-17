@@ -372,6 +372,10 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
   margin-left: var(--esp-1);
 }
 .metrica-legenda { font-size: var(--texto-corpo); color: var(--text-soft); }
+/* `legendaSituacao` já era aceito por cartao(), mas nenhuma regra o pintava. */
+.metrica-legenda.verde { color: var(--verde-texto); }
+.metrica-legenda.amarelo { color: var(--amarelo-texto); }
+.metrica-legenda.vermelho { color: var(--vermelho-texto); }
 
 .delta {
   display: inline-flex;
@@ -1445,6 +1449,71 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 .cabecalho-acoes { display: flex; gap: var(--esp-1); align-items: center; }
 
 /* ---------------- contagem para a próxima saída ---------------- */
+
+/* ---------------- creatina: os sete dias da semana ---------------- */
+
+.creatina-semana {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--esp-1);
+  margin-top: var(--esp-5);
+}
+
+.creatina-dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--esp-2);
+}
+
+.creatina-inicial {
+  font-size: var(--texto-legenda);
+  color: var(--text-soft);
+}
+
+/* O alvo de toque é o --toque inteiro; o círculo visível fica menor, desenhado
+   por dentro, para a fileira não ficar pesada. */
+.creatina-marca {
+  position: relative;
+  width: var(--toque);
+  height: var(--toque);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text-soft);
+}
+
+.creatina-marca::before {
+  content: '';
+  position: absolute;
+  width: var(--esp-7);
+  height: var(--esp-7);
+  border-radius: 50%;
+  border: var(--traco) solid var(--border);
+  background: var(--card);
+}
+
+.creatina-marca .icone {
+  position: relative;
+  width: var(--icone-m);
+  height: var(--icone-m);
+}
+
+/* Dia passado ainda em aberto é tocável: a borda precisa de contraste real,
+   senão o alvo some contra o cartão. O futuro fica claro e tracejado. */
+.creatina-marca:not(.futuro):not(.feito)::before { border-color: var(--text-soft); }
+
+.creatina-marca.feito { color: var(--sobre-acento); }
+.creatina-marca.feito::before { background: var(--accent); border-color: var(--accent); }
+
+.creatina-marca.hoje::before { border-color: var(--accent); border-width: 2px; }
+
+.creatina-marca.futuro { cursor: default; }
+.creatina-marca.futuro::before { background: transparent; border-style: dashed; }
 
 .contagem-linha { display: flex; align-items: center; gap: var(--esp-3); }
 .contagem-linha .icone { width: var(--esp-7); height: var(--esp-7); color: var(--cor, var(--accent)); }
