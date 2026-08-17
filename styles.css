@@ -26,6 +26,13 @@
   /* As cores acima são de preenchimento. Como texto pequeno elas não passam
      no contraste AA, então cada uma tem uma variante escurecida para letra. */
   --accent-texto: #1D63D2;
+  /* Barra colorida é informação, não enfeite: precisa de 3:1 contra o cartão.
+     O verde e o amarelo vivos param em 2,3:1 e 2,2:1, então o gráfico usa um
+     degrau mais escuro. O vermelho já passa em 3,8:1 e fica como está. */
+  --verde-grafico: #16A34A;
+  --amarelo-grafico: #D97706;
+  --vermelho-grafico: #EF4444;
+
   --verde-texto: #15803D;
   --amarelo-texto: #92610A;
   --vermelho-texto: #DC2626;
@@ -951,8 +958,12 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
 .g-barra { stroke: none; }
 
 /* valor fora do alvo sempre em vermelho, não importa a série */
-.sit-fora { fill: var(--vermelho); stroke: var(--vermelho); }
-.sit-deriva { fill: var(--amarelo); stroke: var(--amarelo); }
+/* Cor da situação dentro do gráfico. Os nomes vêm de classeSituacao(), a
+   única tradução do vocabulário de domínio para CSS. Verde faltava: até aqui
+   o gráfico só sabia avisar do erro, nunca confirmar o acerto. */
+.sit-verde { fill: var(--verde-grafico); stroke: var(--verde-grafico); }
+.sit-amarelo { fill: var(--amarelo-grafico); stroke: var(--amarelo-grafico); }
+.sit-vermelho { fill: var(--vermelho-grafico); stroke: var(--vermelho-grafico); }
 
 .g-legenda { display: flex; flex-wrap: wrap; gap: var(--esp-3); }
 .g-legenda-item { display: inline-flex; align-items: center; gap: var(--esp-1); font-size: var(--texto-eixo); color: var(--text-soft); }

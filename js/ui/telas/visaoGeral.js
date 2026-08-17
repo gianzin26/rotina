@@ -8,6 +8,9 @@ import {
   semana as semanaCreatina, sequencia as sequenciaCreatina,
 } from '../../nucleo/creatina.js';
 import { comparacao } from '../../nucleo/deslocamento.js';
+import {
+  alvoSono, situacaoAcordar, situacaoDoPercentual, situacaoSono,
+} from '../../nucleo/metas.js';
 import { resumo as resumoPeso, serie as seriePeso } from '../../nucleo/peso.js';
 import { estado, registroDoDia, trajeto } from '../../nucleo/store.js';
 import { corridas, historico } from '../../nucleo/treino.js';
@@ -133,7 +136,7 @@ function cartaoHoraDeAcordar(dia, ctx) {
     const d = somaDias(dia, -i);
     datas.push(d);
     const s = registroDoDia('sono', d);
-    if (s?.acordou) pontos.push({ x: dias - 1 - i, y: min(s.acordou) });
+    if (s?.acordou) pontos.push({ x: dias - 1 - i, y: min(s.acordou), situacao: situacaoAcordar(d) });
   }
   const plano = estado.rotina.find((r) => r.tipo === 'acordar');
   const alvo = plano ? min(plano.inicio) : null;
@@ -200,21 +203,25 @@ function cartaoSono(dia, ctx) {
     const d = somaDias(dia, -i);
     datas.push(d);
     const hS = horasDeSono(d);
-    if (hS != null) pontos.push({ x: dias - 1 - i, y: hS, situacao: hS < 6 ? 'fora' : null });
+    if (hS != null) pontos.push({ x: dias - 1 - i, y: hS, situacao: situacaoSono(d) });
   }
   const m = media(pontos.map((p) => p.y));
-  const curtas = pontos.filter((p) => p.y < 6).length;
+  const alvo = alvoSono();
+  // conta pela mesma régua que pinta as barras, senão o texto contradiz a cor
+  const falhas = datas.filter((d) => situacaoSono(d) === 'fora').length;
 
   return cartao({
     titulo: 'Sono',
     periodo: periodoEmDias('sono', ctx),
     metrica: m != null ? duracao(m * 60) : '—',
-    legenda: curtas ? `${curtas} noites abaixo de 6 h` : 'Média por noite',
-    legendaSituacao: curtas ? 'fora' : null,
+    legenda: falhas
+      ? `${falhas} ${falhas === 1 ? 'noite fora' : 'noites fora'} do alvo`
+      : (alvo != null ? `Média por noite · alvo ${duracao(alvo * 60)}` : 'Média por noite'),
+    legendaSituacao: falhas ? 'fora' : 'noAlvo',
   },
     grafico({
       // sem base0: no modelo o eixo vai de 4h a 9h, não do zero
-      altura: 140, descricao: 'horas de sono por noite', meta: 6,
+      altura: 140, descricao: 'horas de sono por noite', meta: alvo,
       formatoY: (y) => `${Math.round(y)}h`,
       rotulosX: rotulosDeDatas(datas, 5),
       series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
@@ -234,7 +241,8 @@ function cartaoAderencia(dia, ctx) {
     const ok = ad.atividades.filter((a) => a.registrada && (a.status === 'noAlvo' || a.status === 'deriva')).length;
     totalGeral += total;
     okGeral += ok;
-    return { x, y: total ? Math.round((ok / total) * 100) : 0 };
+    const pct = total ? Math.round((ok / total) * 100) : 0;
+    return { x, y: pct, situacao: situacaoDoPercentual(pct, total > 0) };
   });
   const pct = totalGeral ? Math.round((okGeral / totalGeral) * 100) : null;
 

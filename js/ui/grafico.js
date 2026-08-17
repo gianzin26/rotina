@@ -4,7 +4,7 @@
 // O SVG é desenhado no tamanho real do cartão (1 unidade = 1 pixel), então
 // os rótulos saem no corpo certo em vez de escalarem junto com a caixa.
 
-import { h, limpar, variaveis } from './dom.js';
+import { classeSituacao, h, limpar, variaveis } from './dom.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -180,7 +180,7 @@ function desenharSvg(cfg, L, A) {
           x: px(p.x) - largura / 2, y: Math.min(yy, base),
           // rx sozinho já define ry igual: cápsula de ponta a ponta
           width: largura, height: altura, rx: largura / 2,
-          class: `${classe} g-barra ${p.situacao ? `sit-${p.situacao}` : ''}`.trim(),
+          class: `${classe} g-barra ${p.situacao ? `sit-${classeSituacao(p.situacao)}` : ''}`.trim(),
         }));
       }
     } else if (se.tipo === 'area' || se.tipo === 'linha') {
@@ -207,7 +207,7 @@ function desenharSvg(cfg, L, A) {
       for (const p of pts) {
         svg.append(s('circle', {
           cx: px(p.x), cy: py(p.y),
-          class: `${classe} g-ponto ${p.situacao ? `sit-${p.situacao}` : ''}`.trim(),
+          class: `${classe} g-ponto ${p.situacao ? `sit-${classeSituacao(p.situacao)}` : ''}`.trim(),
         }));
       }
     }
