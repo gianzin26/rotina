@@ -1,6 +1,9 @@
 // ui/telas/ajustes.js — lista agrupada: rotina, metas, dados e perfil.
 // Sem gráfico; cada linha abre uma folha de edição.
 
+import {
+  desligar as desligarDemo, ligado as demoLigado, ligar as ligarDemo,
+} from '../../nucleo/demo.js';
 import { resumoSemana } from '../../nucleo/resumo.js';
 import {
   TOLERANCIAS_PADRAO, estado, mudar, sessao, substituirEstado, trajeto, zerar,
@@ -43,16 +46,57 @@ export function render(tela, ctx) {
       ]),
       grupo('Dados', [
         item('Resumo da semana', 'Texto pronto para copiar', () => mostrarResumo()),
-        item('Exportar backup', 'Arquivo JSON com tudo', () => { const n = baixarJSON(); aviso(`Salvo: ${n}`); }),
-        item('Importar backup', 'Substitui os dados deste aparelho', () => abrirArquivo(ctx)),
+        item('Exportar backup', 'Arquivo JSON com tudo',
+          emDemo(() => { const n = baixarJSON(); aviso(`Salvo: ${n}`); })),
+        item('Importar backup', 'Substitui os dados deste aparelho', emDemo(() => abrirArquivo(ctx))),
+      ]),
+      grupo('Demonstração', [
+        item('Modo demonstração', demoLigado() ? 'Ligado · dados de exemplo' : 'Desligado',
+          () => alternarDemo(ctx), demoLigado() ? 'ativo' : null),
       ]),
       grupo('Perfil', [
         item('Nome', estado.perfil.nome || '—', () => folhaPerfil(ctx)),
-        item('Apagar tudo e recomeçar', 'Volta ao perfil de exemplo', async () => {
+        item('Apagar tudo e recomeçar', 'Volta ao perfil de exemplo', emDemo(async () => {
           if (!await confirmar('Apagar tudo', 'Volta ao perfil de exemplo. Não dá para desfazer.', 'Apagar tudo', true)) return;
           zerar(); aviso('Dados zerados.'); ctx.recarregar();
-        }, 'perigo'),
+        }), 'perigo'),
       ])));
+}
+
+/**
+ * Envolve uma ação que mexe em dados para ela não rodar durante a demonstração.
+ * Exportar geraria um "backup" de dados falsos; apagar e importar destruiriam o
+ * que só existe na cópia guardada.
+ */
+function emDemo(acao) {
+  return (...args) => {
+    if (demoLigado()) {
+      aviso('Indisponível no modo demonstração. Desligue-o primeiro.');
+      return undefined;
+    }
+    return acao(...args);
+  };
+}
+
+async function alternarDemo(ctx) {
+  try {
+    if (demoLigado()) {
+      desligarDemo();
+      aviso('Modo demonstração desligado. Seus dados voltaram.');
+    } else {
+      const ok = await confirmar(
+        'Ligar demonstração',
+        'Seus dados ficam guardados e voltam ao desligar. O que você registrar durante a demonstração é descartado.',
+        'Ligar', false,
+      );
+      if (!ok) return;
+      ligarDemo();
+      aviso('Modo demonstração ligado.');
+    }
+  } catch (erro) {
+    aviso(erro.message);
+  }
+  ctx.recarregar();
 }
 
 function grupo(titulo, itens) {
@@ -62,12 +106,14 @@ function grupo(titulo, itens) {
 }
 
 function item(titulo, valor, aoTocar, variante) {
+  // 'ativo' é um interruptor já ligado: o check diz o estado melhor que a seta,
+  // que promete abrir uma tela e não abre nada.
   return linha(
     [
       h('span', { class: `linha-titulo ${variante === 'perigo' ? 'perigoso' : ''}`.trim() }, titulo),
-      valor && h('span', { class: 'linha-sub' }, valor),
+      valor && h('span', { class: `linha-sub ${variante === 'ativo' ? 'aceso' : ''}`.trim() }, valor),
     ],
-    icone('chevronDireita'),
+    icone(variante === 'ativo' ? 'check' : 'chevronDireita'),
     { aoTocar },
   );
 }

@@ -21,6 +21,7 @@ const ARQUIVOS = [
   './js/nucleo/agenda.js',
   './js/nucleo/creatina.js',
   './js/nucleo/cronometro.js',
+  './js/nucleo/demo.js',
   './js/nucleo/deslocamento.js',
   './js/nucleo/peso.js',
   './js/nucleo/resumo.js',

@@ -1,5 +1,6 @@
 // app.js — casca do app: abas, rota por hash e o ciclo de redesenho.
 
+import { desligar as desligarDemo, ligado as demoLigado } from './js/nucleo/demo.js';
 import { carregar, definirRelatorDeFalha } from './js/nucleo/store.js';
 import { iniciarAtualizacoes } from './js/ui/atualizacao.js';
 import { $, h, limpar } from './js/ui/dom.js';
@@ -60,10 +61,28 @@ const ctx = {
   recarregar() { desenhar(); },
 };
 
+/* A faixa fica sempre visível durante a demonstração: sem ela é fácil registrar
+   algo de verdade sobre dados falsos e perder ao desligar. */
+function faixaDemo() {
+  const marca = document.body.dataset.demo === 'sim';
+  if (demoLigado() === marca) return;
+  document.body.dataset.demo = demoLigado() ? 'sim' : 'nao';
+  $('#faixa-demo')?.remove();
+  if (!demoLigado()) return;
+  document.body.prepend(h('div', { class: 'faixa-demo', id: 'faixa-demo', role: 'status' },
+    icone('alvo'),
+    h('span', {}, 'Modo demonstração · dados de exemplo'),
+    h('button', {
+      class: 'faixa-demo-sair',
+      onclick: () => { try { desligarDemo(); } catch { /* a tela Ajustes explica */ } ir('ajustes'); },
+    }, 'Sair')));
+}
+
 function desenhar(preservarRolagem = true) {
   const y = tela.scrollTop;
   limpar(tela);
   limpar(rodape);
+  faixaDemo();
   const aba = ABAS.find((a) => a.id === abaAtual) || ABAS[0];
   document.body.dataset.aba = aba.id;
   aba.view.render(tela, ctx);

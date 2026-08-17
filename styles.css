@@ -224,6 +224,39 @@ button { -webkit-tap-highlight-color: transparent; }
 
 #app { min-height: 100dvh; }
 
+/* Faixa da demonstração: gruda no topo em vez de empurrar o conteúdo, para não
+   precisar compensar altura em cada tela. */
+.faixa-demo {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  padding: var(--esp-2) var(--esp-4);
+  padding-top: calc(var(--esp-2) + env(safe-area-inset-top));
+  background: var(--tinta-accent);
+  color: var(--accent-texto);
+  font-size: var(--texto-legenda);
+}
+
+.faixa-demo .icone { width: var(--icone-m); height: var(--icone-m); flex: none; }
+.faixa-demo > span { flex: 1; min-width: 0; }
+
+.faixa-demo-sair {
+  flex: none;
+  min-height: var(--toque);
+  padding-inline: var(--esp-3);
+  border: 0;
+  background: none;
+  color: var(--accent-texto);
+  font-size: var(--texto-legenda);
+  font-weight: var(--peso-forte);
+  cursor: pointer;
+}
+
+.linha-sub.aceso { color: var(--accent-texto); }
+
 #tela {
   padding: var(--esp-4) var(--esp-4) calc(var(--altura-abas) + var(--folga-rodape) + env(safe-area-inset-bottom));
   max-width: var(--largura-conteudo);
