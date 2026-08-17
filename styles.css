@@ -1443,3 +1443,17 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 .girar-180 { transform: rotate(180deg); }
 .botao-nota { font-size: var(--texto-mini); font-weight: var(--peso-normal); opacity: .85; margin-left: var(--esp-1); }
 .cabecalho-acoes { display: flex; gap: var(--esp-1); align-items: center; }
+
+/* ---------------- contagem para a próxima saída ---------------- */
+
+.contagem-linha { display: flex; align-items: center; gap: var(--esp-3); }
+.contagem-linha .icone { width: var(--esp-7); height: var(--esp-7); color: var(--cor, var(--accent)); }
+.contagem {
+  font-family: var(--font-display);
+  font-size: var(--texto-metrica);
+  font-weight: var(--peso-forte);
+  letter-spacing: var(--tracking-display);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.contagem.urgente { color: var(--vermelho-texto); }

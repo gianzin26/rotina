@@ -14,6 +14,7 @@ import { cartao, dado, etiqueta, fileiraDados, linha, titulo } from '../cartao.j
 import { anexar, h, vazio } from '../dom.js';
 import { aviso, campo, confirmar, entradaNumero, escolherNumero, fileiraRPE, folha, segmentos } from '../folha.js';
 import { grafico } from '../grafico.js';
+import { paceTexto } from './visaoGeral.js';
 import { icone } from '../icones.js';
 
 let aba = 'forca';
@@ -375,30 +376,45 @@ function cartaoRegistroCorrida(ctx) {
     ctx.recarregar();
   };
 
-  const ritmo = c?.minutos && c?.distanciaKm ? c.minutos / c.distanciaKm : null;
+  const ritmo = c?.minutos > 0 && c?.distanciaKm > 0 ? c.minutos / c.distanciaKm : null;
+
+  /* O modelo guarda distância e minutos; o pace é derivado. Editar o pace
+     recalcula os minutos a partir da distância, para os dois baterem sempre. */
+  const definirPace = (paceMin) => {
+    const km = c?.distanciaKm;
+    if (!(km > 0)) { aviso('Registre a distância primeiro.'); return; }
+    grava({ minutos: Math.round(paceMin * km) });
+  };
 
   return cartao({
     titulo: 'Corrida de hoje',
-    subtitulo: 'Distância, tempo e esforço',
-    metrica: c?.distanciaKm != null ? nUm(c.distanciaKm, 1) : '—',
+    subtitulo: 'Distância e pace alimentam o gráfico da Visão geral',
+    metrica: c?.distanciaKm > 0 ? nUm(c.distanciaKm, 1) : '—',
     unidade: 'km',
-    legenda: ritmo != null ? `ritmo de ${nUm(ritmo, 1)} min/km` : 'sem distância registrada',
+    legenda: ritmo != null ? `pace de ${paceTexto(ritmo)} min/km` : 'registre distância e tempo',
   },
     fileiraDados(
-      dado('Distância', c?.distanciaKm != null ? nUm(c.distanciaKm, 1) : '—', {
+      dado('Distância', c?.distanciaKm > 0 ? nUm(c.distanciaKm, 1) : '—', {
         sufixo: 'km',
         aoTocar: () => escolherNumero({
           titulo: 'Distância', rotulo: 'Quilômetros', valor: c?.distanciaKm ?? '', passo: 0.1, sufixo: 'km',
           aoEscolher: (v) => grava({ distanciaKm: v }),
         }),
       }),
-      dado('Tempo', c?.minutos != null ? duracao(c.minutos) : '—', {
+      dado('Pace', ritmo != null ? paceTexto(ritmo) : '—', {
+        sufixo: 'min/km',
+        aoTocar: () => escolherNumero({
+          titulo: 'Pace', rotulo: 'Minutos por quilômetro (5,5 = 5:30)',
+          valor: ritmo != null ? Math.round(ritmo * 100) / 100 : '', passo: 0.05, sufixo: 'min/km',
+          aoEscolher: definirPace,
+        }),
+      }),
+      dado('Tempo', c?.minutos > 0 ? duracao(c.minutos) : '—', {
         aoTocar: () => escolherNumero({
           titulo: 'Tempo', rotulo: 'Minutos', valor: c?.minutos ?? '', passo: 1, sufixo: 'min',
           aoEscolher: (v) => grava({ minutos: v }),
         }),
-      }),
-      dado('Ritmo', ritmo != null ? nUm(ritmo, 1) : '—', { sufixo: ritmo != null ? 'min/km' : null })),
+      })),
     titulo('RPE'),
     fileiraRPE(c?.rpe ?? null, (v) => grava({ rpe: v })),
     h('div', { class: 'lista' },
@@ -465,9 +481,9 @@ function cartaoCorridas() {
   },
     h('div', { class: 'lista' }, lista.map((c) => linha(
       [
-        h('span', { class: 'linha-titulo' }, c.distanciaKm != null ? `${nUm(c.distanciaKm, 1)} km` : '—'),
+        h('span', { class: 'linha-titulo' }, c.distanciaKm > 0 ? `${nUm(c.distanciaKm, 1)} km` : '—'),
         h('span', { class: 'linha-sub' },
-          `${dataCurta(c.data)}${c.minutos != null ? ` · ${duracao(c.minutos)}` : ''}${c.rpe ? ` · RPE ${c.rpe}` : ''}`),
+          `${dataCurta(c.data)}${c.minutos > 0 && c.distanciaKm > 0 ? ` · ${paceTexto(c.minutos / c.distanciaKm)} min/km` : ''}${c.rpe ? ` · RPE ${c.rpe}` : ''}`),
       ],
       c.teste5k && etiqueta('teste', 'noAlvo'),
     ))));

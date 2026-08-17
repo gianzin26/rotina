@@ -1,18 +1,39 @@
-// ui/telas/corpo.js — peso, hora de acordar, sono e cintura.
+// ui/telas/corpo.js — peso, hora de acordar e sono.
 
 import { horasDeSono } from '../../nucleo/agenda.js';
-import { cinturas, resumo as resumoPeso, serie as seriePeso } from '../../nucleo/peso.js';
+import { resumo as resumoPeso, serie as seriePeso } from '../../nucleo/peso.js';
 import { estado, registroDoDia, upsertDia } from '../../nucleo/store.js';
 import {
-  dataCurta, diaLogico, diffDias, duracao, hhmm, media, min, nUm, somaDias,
+  dataCurta, diaLogico, duracao, diffDias, hhmm, media, min, nUm, somaDias,
 } from '../../nucleo/util.js';
-import { cartao, dado, fileiraDados, linha } from '../cartao.js';
+import { cartao, dado, fileiraDados } from '../cartao.js';
 import { anexar, h, vazio } from '../dom.js';
 import { aviso, escolherNumero } from '../folha.js';
 import { grafico } from '../grafico.js';
 import { icone } from '../icones.js';
 
-const JANELA = 30;
+const JANELA = 14; // duas semanas: barra larga o bastante para ler
+
+/**
+ * Rótulos de data espalhados por igual, sempre incluindo o primeiro e o último.
+ * Distribuir por índice em vez de somar um passo evita o encavalamento que
+ * aparecia quando o último rótulo caía colado no anterior.
+ */
+function rotulosDeDatas(datas, quantos = 5) {
+  const n = datas.length;
+  if (n === 0) return [];
+  if (n === 1) return [{ x: 0, texto: dataCurta(datas[0]) }];
+  const total = Math.min(quantos, n);
+  const vistos = new Set();
+  const fora = [];
+  for (let i = 0; i < total; i++) {
+    const idx = Math.round((i * (n - 1)) / (total - 1));
+    if (vistos.has(idx)) continue;
+    vistos.add(idx);
+    fora.push({ x: idx, texto: dataCurta(datas[idx]) });
+  }
+  return fora;
+}
 
 export function render(tela, ctx) {
   const dia = diaLogico();
@@ -25,8 +46,7 @@ export function render(tela, ctx) {
     h('div', { class: 'grade' },
       cartaoPeso(dia, ctx),
       cartaoHoraDeAcordar(dia),
-      cartaoSono(dia),
-      cartaoCintura(dia, ctx)));
+      cartaoSono(dia)));
 }
 
 /* ---------------- peso ---------------- */
@@ -54,7 +74,7 @@ function cartaoPeso(dia, ctx) {
     corpo.push(grafico({
       altura: 160, descricao: 'peso diário e média de 7 dias',
       formatoY: (y) => `${nUm(y, 1)} kg`, meta: r.alvo,
-      rotulosX: [s[0], s[Math.floor(s.length / 2)], s[s.length - 1]]
+      rotulosX: s.filter((_, i) => i % Math.max(1, Math.round(s.length / 5)) === 0 || i === s.length - 1)
         .map((p) => ({ x: diffDias(base, p.data), texto: dataCurta(p.data) })),
       series: [
         { tipo: 'pontos', serie: 'serie-apagada', pontos },
@@ -95,26 +115,26 @@ function cartaoPeso(dia, ctx) {
 
 function cartaoHoraDeAcordar(dia) {
   const pontos = [];
-  const rotulosX = [];
+  const datas = [];
   for (let i = JANELA - 1; i >= 0; i--) {
     const d = somaDias(dia, -i);
+    datas.push(d);
     const s = registroDoDia('sono', d);
-    const x = JANELA - 1 - i;
-    if (s?.acordou) pontos.push({ x, y: min(s.acordou) });
-    if (i === JANELA - 1 || i === Math.floor(JANELA / 2) || i === 0) rotulosX.push({ x, texto: dataCurta(d) });
+    if (s?.acordou) pontos.push({ x: JANELA - 1 - i, y: min(s.acordou) });
   }
+  const rotulosX = rotulosDeDatas(datas, 5);
   const plano = estado.rotina.find((r) => r.tipo === 'acordar');
   const alvo = plano ? min(plano.inicio) : null;
   const m = media(pontos.map((p) => p.y));
 
   return cartao({
     titulo: 'Hora de acordar',
-    periodo: 'Últimos 30 dias',
+    periodo: 'Últimos 14 dias',
     metrica: m != null ? hhmm(Math.round(m)) : '—',
     legenda: alvo != null ? `Média · alvo ${hhmm(alvo)}` : 'Média',
   },
     grafico({
-      altura: 160, descricao: 'hora de acordar nos últimos 30 dias',
+      altura: 160, descricao: 'hora de acordar nos últimos 14 dias',
       yInvertido: true, formatoY: (y) => hhmm(y), rotulosX, meta: alvo,
       series: [{ tipo: 'linha', serie: 'serie-principal', marcadores: true, pontos }],
     }));
@@ -124,20 +144,20 @@ function cartaoHoraDeAcordar(dia) {
 
 function cartaoSono(dia) {
   const pontos = [];
-  const rotulosX = [];
+  const datas = [];
   for (let i = JANELA - 1; i >= 0; i--) {
     const d = somaDias(dia, -i);
+    datas.push(d);
     const hS = horasDeSono(d);
-    const x = JANELA - 1 - i;
-    if (hS != null) pontos.push({ x, y: hS, situacao: hS < 6 ? 'fora' : null });
-    if (i === JANELA - 1 || i === Math.floor(JANELA / 2) || i === 0) rotulosX.push({ x, texto: dataCurta(d) });
+    if (hS != null) pontos.push({ x: JANELA - 1 - i, y: hS, situacao: hS < 6 ? 'fora' : null });
   }
+  const rotulosX = rotulosDeDatas(datas, 5);
   const m = media(pontos.map((p) => p.y));
   const curtas = pontos.filter((p) => p.y < 6).length;
 
   return cartao({
     titulo: 'Sono',
-    periodo: 'Últimos 30 dias',
+    periodo: 'Últimos 14 dias',
     metrica: m != null ? duracao(m * 60) : '—',
     legenda: curtas ? `${curtas} noites abaixo de 6 h` : 'Média por noite',
     legendaSituacao: curtas ? 'fora' : null,
@@ -147,30 +167,4 @@ function cartaoSono(dia) {
       formatoY: (y) => `${Math.round(y)}h`, rotulosX,
       series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));
-}
-
-/* ---------------- cintura ---------------- */
-
-function cartaoCintura(dia, ctx) {
-  const lista = cinturas();
-  const ultima = lista[0] || null;
-  const registrar = () => escolherNumero({
-    titulo: 'Cintura', rotulo: 'Centímetros', valor: ultima?.cinturaCm ?? '', passo: 0.5, sufixo: 'cm',
-    aoEscolher: (v) => { upsertDia('peso', dia, { cinturaCm: v }); aviso('Cintura registrada.'); ctx.recarregar(); },
-  });
-  const atrasada = ultima ? diffDias(ultima.data, dia) >= 7 : true;
-
-  return cartao({
-    titulo: 'Cintura',
-    periodo: 'Entrada semanal',
-    metrica: ultima ? nUm(ultima.cinturaCm, 1) : '—',
-    unidade: 'cm',
-    legenda: ultima ? `Medida em ${dataCurta(ultima.data)}` : 'Nenhuma medida ainda',
-  },
-    atrasada && h('p', { class: 'texto-suave' }, 'Faz uma semana ou mais desde a última medida.'),
-    h('button', { class: 'botao largura-total', onclick: registrar }, icone('mais'), 'Registrar cintura'),
-    lista.length > 1 && h('div', { class: 'lista' }, lista.slice(0, 6).map((c) => linha(
-      h('span', { class: 'linha-titulo' }, dataCurta(c.data)),
-      h('span', { class: 'dado-valor' }, nUm(c.cinturaCm, 1), h('span', { class: 'dado-sufixo' }, 'cm')),
-    ))));
 }

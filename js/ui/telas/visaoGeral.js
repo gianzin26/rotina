@@ -1,21 +1,52 @@
 // ui/telas/visaoGeral.js — painel de entrada no computador.
-// Reúne as tendências: hora de acordar, peso, aderência, sono, deslocamento,
-// volume de treino e corrida.
+// Contagem para a próxima saída, tendências e resumo de treino.
 
-import { semana as semanaAderencia } from '../../nucleo/aderencia.js';
-import { horasDeSono } from '../../nucleo/agenda.js';
+import { diaAderencia } from '../../nucleo/aderencia.js';
+import { horasDeSono, ocorrencias } from '../../nucleo/agenda.js';
 import { comparacao } from '../../nucleo/deslocamento.js';
 import { resumo as resumoPeso, serie as seriePeso } from '../../nucleo/peso.js';
-import { estado, registroDoDia } from '../../nucleo/store.js';
+import { estado, registroDoDia, trajeto } from '../../nucleo/store.js';
 import { corridas, historico } from '../../nucleo/treino.js';
 import {
-  DIAS, dataCurta, diaLogico, diffDias, duracao, hhmm, inicioSemana, media, min, nUm, somaDias,
+  DIAS, agoraMin, dataCurta, diaLogico, diffDias, duracao, hhmm, inicioSemana,
+  media, min, nUm, somaDias,
 } from '../../nucleo/util.js';
 import { cartao } from '../cartao.js';
 import { anexar, h, vazio } from '../dom.js';
 import { grafico } from '../grafico.js';
+import { icone } from '../icones.js';
 
-const JANELA = 30; // "últimos 30 dias", como na referência
+const JANELA = 14;      // duas semanas: barras largas o bastante para ler
+const JANELA_PESO = 30;
+
+/**
+ * Rótulos de data espalhados por igual, sempre incluindo o primeiro e o último.
+ * Distribuir por índice em vez de somar um passo evita o encavalamento que
+ * aparecia quando o último rótulo caía colado no anterior.
+ */
+function rotulosDeDatas(datas, quantos = 5) {
+  const n = datas.length;
+  if (n === 0) return [];
+  if (n === 1) return [{ x: 0, texto: dataCurta(datas[0]) }];
+  const total = Math.min(quantos, n);
+  const vistos = new Set();
+  const fora = [];
+  for (let i = 0; i < total; i++) {
+    const idx = Math.round((i * (n - 1)) / (total - 1));
+    if (vistos.has(idx)) continue;
+    vistos.add(idx);
+    fora.push({ x: idx, texto: dataCurta(datas[idx]) });
+  }
+  return fora;
+}
+
+/** 5.2 → "5:12" */
+export function paceTexto(minPorKm) {
+  if (!Number.isFinite(minPorKm)) return '—';
+  const m = Math.floor(minPorKm);
+  const s = Math.round((minPorKm - m) * 60);
+  return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, '0')}`;
+}
 
 export function render(tela, ctx) {
   const dia = diaLogico();
@@ -24,26 +55,81 @@ export function render(tela, ctx) {
     h('header', { class: 'cabecalho' },
       h('div', {}, h('h1', {}, 'Visão geral'))),
     h('div', { class: 'grade' },
+      cartaoContagem(dia),
       cartaoHoraDeAcordar(dia),
       cartaoPeso(),
-      cartaoAderencia(dia),
       cartaoSono(dia),
+      cartaoAderencia(dia),
       cartaoDeslocamento(),
       cartaoVolume(),
       cartaoCorrida()));
 }
 
+/* ---------------- contagem para a próxima saída ---------------- */
+
+/** Próximo deslocamento previsto: hoje, ou o primeiro de amanhã. */
+function proximaSaida(dia) {
+  const agora = agoraMin();
+  const hoje = ocorrencias(dia)
+    .filter((o) => o.tipo === 'transito' && o.inicio != null && o.inicio > agora && !o.real)
+    .sort((a, b) => a.inicio - b.inicio)[0];
+  if (hoje) return { o: hoje, dataISO: dia, amanha: false };
+
+  const amanha = somaDias(dia, 1);
+  const primeira = ocorrencias(amanha)
+    .filter((o) => o.tipo === 'transito' && o.inicio != null)
+    .sort((a, b) => a.inicio - b.inicio)[0];
+  return primeira ? { o: primeira, dataISO: amanha, amanha: true } : null;
+}
+
+function cartaoContagem(dia) {
+  const alvo = proximaSaida(dia);
+  if (!alvo) {
+    return cartao({ titulo: 'Próxima saída', metrica: '—', legenda: 'Nenhum deslocamento na agenda' });
+  }
+
+  const destino = trajeto(alvo.o.trajetoId)?.destino || alvo.o.titulo;
+  const relogio = h('span', { class: 'contagem' }, '--:--:--');
+
+  // um alvo em Date para poder contar segundos, não só minutos
+  const [ano, mes, diaDoMes] = alvo.dataISO.split('-').map(Number);
+  const quando = new Date(ano, mes - 1, diaDoMes, Math.floor(alvo.o.inicio / 60), alvo.o.inicio % 60, 0);
+
+  const pintar = () => {
+    const resta = Math.max(0, Math.round((quando - Date.now()) / 1000));
+    const p = (n) => String(n).padStart(2, '0');
+    relogio.textContent = resta > 0
+      ? `${p(Math.floor(resta / 3600))}:${p(Math.floor((resta % 3600) / 60))}:${p(resta % 60)}`
+      : 'agora';
+    relogio.classList.toggle('urgente', resta > 0 && resta <= 15 * 60);
+  };
+  pintar();
+
+  // o intervalo se desliga sozinho quando a tela é trocada
+  const tique = setInterval(() => {
+    if (!relogio.isConnected) { clearInterval(tique); return; }
+    pintar();
+  }, 1000);
+
+  return cartao({
+    titulo: 'Próxima saída',
+    periodo: alvo.amanha ? 'Amanhã' : 'Hoje',
+    legenda: `Sair para ${destino} · previsto ${hhmm(alvo.o.inicio)}`,
+    classe: 'tipo-transito',
+  },
+    h('div', { class: 'contagem-linha' }, icone('transito'), relogio));
+}
+
 /* ---------------- hora de acordar ---------------- */
 
 function cartaoHoraDeAcordar(dia) {
+  const datas = [];
   const pontos = [];
-  const rotulosX = [];
   for (let i = JANELA - 1; i >= 0; i--) {
     const d = somaDias(dia, -i);
+    datas.push(d);
     const s = registroDoDia('sono', d);
-    const x = JANELA - 1 - i;
-    if (s?.acordou) pontos.push({ x, y: min(s.acordou) });
-    if (i === JANELA - 1 || i === Math.floor(JANELA / 2) || i === 0) rotulosX.push({ x, texto: dataCurta(d) });
+    if (s?.acordou) pontos.push({ x: JANELA - 1 - i, y: min(s.acordou) });
   }
   const plano = estado.rotina.find((r) => r.tipo === 'acordar');
   const alvo = plano ? min(plano.inicio) : null;
@@ -51,21 +137,22 @@ function cartaoHoraDeAcordar(dia) {
 
   return cartao({
     titulo: 'Hora de acordar',
-    periodo: 'Últimos 30 dias',
+    periodo: 'Últimos 14 dias',
     metrica: m != null ? hhmm(Math.round(m)) : '—',
-    legenda: 'Média',
+    legenda: alvo != null ? `Média · alvo ${hhmm(alvo)}` : 'Média',
   },
     grafico({
-      altura: 140, descricao: 'hora de acordar nos últimos 30 dias',
-      yInvertido: true, formatoY: (y) => hhmm(y), rotulosX, meta: alvo,
-      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
+      altura: 140, descricao: 'hora de acordar nos últimos 14 dias',
+      yInvertido: true, formatoY: (y) => hhmm(y), meta: alvo,
+      rotulosX: rotulosDeDatas(datas, 5),
+      series: [{ tipo: 'linha', serie: 'serie-principal', marcadores: true, pontos }],
     }));
 }
 
 /* ---------------- peso ---------------- */
 
 function cartaoPeso() {
-  const s = seriePeso();
+  const s = seriePeso().slice(-JANELA_PESO);
   const r = resumoPeso();
   if (!s.length) {
     return cartao({ titulo: 'Peso', periodo: 'Média de 7 dias' },
@@ -73,10 +160,9 @@ function cartaoPeso() {
   }
   const base = s[0].data;
   const linhaMedia = s.filter((p) => p.media7 != null).map((p) => ({ x: diffDias(base, p.data), y: p.media7 }));
-  const rotulosX = [s[0], s[Math.floor(s.length / 2)], s[s.length - 1]]
-    .map((p) => ({ x: diffDias(base, p.data), texto: dataCurta(p.data) }));
   const v = r.variacaoSemana;
   const [gMin, gMax] = r.ganhoAlvo;
+  const passo = Math.max(1, Math.round(s.length / 5));
 
   return cartao({
     titulo: 'Peso',
@@ -90,59 +176,70 @@ function cartaoPeso() {
   },
     grafico({
       altura: 140, descricao: 'média de 7 dias do peso',
-      formatoY: (y) => `${nUm(y, 1)} kg`, rotulosX, meta: r.alvo,
+      formatoY: (y) => `${nUm(y, 1)} kg`, meta: r.alvo,
+      rotulosX: s.filter((_, i) => i % passo === 0 || i === s.length - 1)
+        .map((p) => ({ x: diffDias(base, p.data), texto: dataCurta(p.data) })),
       series: [{ tipo: 'area', serie: 'serie-principal', pontos: linhaMedia }],
-    }));
-}
-
-/* ---------------- aderência ---------------- */
-
-function cartaoAderencia(dia) {
-  const inicio = inicioSemana(dia);
-  const sem = semanaAderencia(inicio);
-  const pontos = sem.dias.map((d, x) => {
-    const total = d.atividades.filter((a) => a.registrada).length;
-    const ok = d.atividades.filter((a) => a.registrada && (a.status === 'noAlvo' || a.status === 'deriva')).length;
-    return { x, y: total ? Math.round((ok / total) * 100) : 0 };
-  });
-
-  return cartao({
-    titulo: 'Aderência',
-    periodo: 'Esta semana',
-    metrica: sem.percentual != null ? `${sem.percentual}%` : '—',
-    legenda: 'No horário',
-  },
-    grafico({
-      altura: 140, descricao: 'aderência por dia da semana', yMin: 0, yMax: 100, yTicks: 4,
-      formatoY: (y) => `${Math.round(y)}%`,
-      rotulosX: pontos.map((p, i) => ({ x: i, texto: DIAS[(i + 1) % 7] })),
-      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));
 }
 
 /* ---------------- sono ---------------- */
 
 function cartaoSono(dia) {
+  const datas = [];
   const pontos = [];
-  const rotulosX = [];
   for (let i = JANELA - 1; i >= 0; i--) {
     const d = somaDias(dia, -i);
+    datas.push(d);
     const hS = horasDeSono(d);
-    const x = JANELA - 1 - i;
-    if (hS != null) pontos.push({ x, y: hS, situacao: hS < 6 ? 'fora' : null });
-    if (i === JANELA - 1 || i === Math.floor(JANELA / 2) || i === 0) rotulosX.push({ x, texto: dataCurta(d) });
+    if (hS != null) pontos.push({ x: JANELA - 1 - i, y: hS, situacao: hS < 6 ? 'fora' : null });
   }
   const m = media(pontos.map((p) => p.y));
+  const curtas = pontos.filter((p) => p.y < 6).length;
 
   return cartao({
     titulo: 'Sono',
-    periodo: 'Últimos 30 dias',
+    periodo: 'Últimos 14 dias',
     metrica: m != null ? duracao(m * 60) : '—',
-    legenda: 'Média por noite',
+    legenda: curtas ? `${curtas} noites abaixo de 6 h` : 'Média por noite',
+    legendaSituacao: curtas ? 'fora' : null,
   },
     grafico({
       altura: 140, descricao: 'horas de sono por noite', base0: true, meta: 6,
-      formatoY: (y) => `${Math.round(y)}h`, rotulosX,
+      formatoY: (y) => `${Math.round(y)}h`,
+      rotulosX: rotulosDeDatas(datas, 5),
+      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
+    }));
+}
+
+/* ---------------- aderência ---------------- */
+
+function cartaoAderencia(dia) {
+  const dias = Array.from({ length: 7 }, (_, i) => somaDias(dia, -(6 - i)));
+  let totalGeral = 0;
+  let okGeral = 0;
+  const pontos = dias.map((d, x) => {
+    const ad = diaAderencia(d);
+    const total = ad.atividades.filter((a) => a.registrada).length;
+    const ok = ad.atividades.filter((a) => a.registrada && (a.status === 'noAlvo' || a.status === 'deriva')).length;
+    totalGeral += total;
+    okGeral += ok;
+    return { x, y: total ? Math.round((ok / total) * 100) : 0 };
+  });
+  const pct = totalGeral ? Math.round((okGeral / totalGeral) * 100) : null;
+
+  return cartao({
+    titulo: 'Aderência',
+    periodo: 'Últimos 7 dias',
+    metrica: pct != null ? `${pct}%` : '—',
+    legenda: `No horário · ${okGeral} de ${totalGeral} registros`,
+  },
+    grafico({
+      altura: 140, descricao: 'aderência por dia', yMin: 0, yMax: 100, yTicks: 4,
+      formatoY: (y) => `${Math.round(y)}%`,
+      rotulosX: dias.map((d, x) => ({
+        x, texto: `${DIAS[new Date(`${d}T12:00`).getDay()]} ${d.slice(8)}`,
+      })),
       series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));
 }
@@ -171,49 +268,71 @@ function cartaoDeslocamento() {
         h('div', { class: 'barra-h-cheia', vars: { fracao: c.medianaDuracao / maior } }))))));
 }
 
-/* ---------------- volume de treino e corrida ---------------- */
+/* ---------------- volume de treino ---------------- */
 
 function cartaoVolume() {
   const dia = diaLogico();
   const semanas = 8;
   const pontos = [];
+  const rotulos = [];
   for (let i = semanas - 1; i >= 0; i--) {
     const ini = somaDias(inicioSemana(dia), -i * 7);
     const fim = somaDias(ini, 6);
     const volume = historico()
       .filter((t) => t.data >= ini && t.data <= fim)
       .reduce((a, t) => a + (t.exercicios || []).reduce((b, e) => b + (e.carga || 0) * (e.reps || 0), 0), 0);
-    pontos.push({ x: semanas - 1 - i, y: volume });
+    const x = semanas - 1 - i;
+    pontos.push({ x, y: volume });
+    if (i % 2 === 0) rotulos.push({ x, texto: dataCurta(ini) });
   }
-  const atual = pontos[pontos.length - 1]?.y ?? 0;
+  const desde = somaDias(dia, -6);
+  const ultimos7 = historico()
+    .filter((t) => t.data >= desde && t.data <= dia)
+    .reduce((a, t) => a + (t.exercicios || []).reduce((b, e) => b + (e.carga || 0) * (e.reps || 0), 0), 0);
 
   return cartao({
     titulo: 'Volume de treino',
-    pequeno: true,
-    metrica: atual ? nUm(atual / 1000, 1) : '—',
-    unidade: atual ? 't' : null,
-    legenda: 'Semana atual',
+    periodo: '8 semanas',
+    metrica: nUm(ultimos7 / 1000, 1),
+    unidade: 't',
+    legenda: ultimos7 ? 'Carga levantada nos últimos 7 dias' : 'Sem treino nos últimos 7 dias',
   },
     grafico({
-      altura: 64, descricao: 'volume de treino por semana', base0: true, yTicks: 0, semRotulos: true,
-      series: [{ tipo: 'area', serie: 'serie-principal', pontos }],
+      altura: 120, descricao: 'volume de treino por semana', base0: true, yTicks: 2,
+      formatoY: (y) => `${nUm(y / 1000, 1)} t`, rotulosX: rotulos,
+      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));
 }
 
+/* ---------------- corrida ---------------- */
+
 function cartaoCorrida() {
-  const lista = corridas().filter((c) => c.distanciaKm && c.minutos).slice(0, 7).reverse();
-  const ritmos = lista.map((c, x) => ({ x, y: c.minutos / c.distanciaKm }));
-  const m = media(ritmos.map((p) => p.y));
+  // pace só existe onde há distância e tempo; o resto não entra no gráfico
+  const lista = corridas()
+    .filter((c) => c.distanciaKm > 0 && c.minutos > 0)
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .slice(-8);
+
+  if (!lista.length) {
+    return cartao({ titulo: 'Corrida', periodo: 'Pace por treino' },
+      vazio('Registre uma corrida em Treino → Corrida para ver o pace.'));
+  }
+
+  const pontos = lista.map((c, x) => ({ x, y: c.minutos / c.distanciaKm }));
+  const ultimo = pontos[pontos.length - 1].y;
+  const km = lista.reduce((a, c) => a + c.distanciaKm, 0);
 
   return cartao({
     titulo: 'Corrida',
-    pequeno: true,
-    metrica: m != null ? `${Math.floor(m)}:${String(Math.round((m % 1) * 60)).padStart(2, '0')}` : '—',
-    unidade: m != null ? 'min/km' : null,
-    legenda: 'Ritmo médio recente',
+    periodo: 'Pace por treino',
+    metrica: paceTexto(ultimo),
+    unidade: 'min/km',
+    legenda: `Último treino · ${nUm(km, 1)} km nas últimas ${lista.length}`,
   },
     grafico({
-      altura: 64, descricao: 'ritmo das últimas corridas', yTicks: 0, semRotulos: true,
-      series: [{ tipo: 'barras', serie: 'serie-principal', pontos: ritmos }],
+      altura: 140, descricao: 'pace das últimas corridas',
+      formatoY: (y) => paceTexto(y),
+      rotulosX: lista.map((c, x) => ({ x, texto: dataCurta(c.data) })),
+      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));
 }

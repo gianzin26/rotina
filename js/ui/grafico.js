@@ -92,7 +92,13 @@ function desenharSvg(cfg, L, A) {
   if (cfg.base0) y0 = 0; // barras nascem no zero, sem eixo negativo
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
 
-  const px = (x) => MARGEM.esquerda + (x1 === x0 ? larg / 2 : ((x - x0) / (x1 - x0)) * larg);
+  // Barra ocupa uma faixa, não um ponto: com escala contínua a primeira e a
+  // última ficam metade para fora. Com banda, cada uma senta no meio da sua.
+  const temBarras = cfg.series.some((se) => se.tipo === 'barras');
+  const banda = larg / Math.max(1, x1 - x0 + 1);
+  const px = temBarras
+    ? (x) => MARGEM.esquerda + banda * (x - x0 + 0.5)
+    : (x) => MARGEM.esquerda + (x1 === x0 ? larg / 2 : ((x - x0) / (x1 - x0)) * larg);
   const py = (y) => {
     const t = (y - y0) / (y1 - y0);
     return MARGEM.topo + (cfg.yInvertido ? t : 1 - t) * alt;
@@ -126,9 +132,10 @@ function desenharSvg(cfg, L, A) {
     if (se.tipo === 'barras') {
       // Referência: passo de 12px com barra de 8px e vão de 4px. Quando cabem
       // menos pixels por ponto, a barra encolhe mas o vão nunca some.
-      const passo = pts.length > 1 ? larg / pts.length : larg;
-      const largura = Math.max(1.5, Math.min(BARRA_MAX, passo - BARRA_VAO));
-      const base = py(Math.max(y0, 0));
+      const largura = Math.max(1.5, Math.min(BARRA_MAX, banda - BARRA_VAO));
+      // com eixo invertido o zero fica em cima; a barra continua crescendo
+      // do chão do desenho, senão sai pendurada de cabeça para baixo
+      const base = cfg.yInvertido ? MARGEM.topo + alt : py(Math.max(y0, 0));
       for (const p of pts) {
         const yy = py(p.y);
         const altura = Math.max(1.5, Math.abs(base - yy));
