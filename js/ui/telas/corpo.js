@@ -137,6 +137,7 @@ function cartaoHoraDeAcordar(dia, ctx) {
   },
     grafico({
       altura: 160, descricao: `hora de acordar nos últimos ${dias} dias`,
+      xMin: 0, xMax: dias - 1,
       // barras crescendo do chão, como no modelo: mais alto = acordou mais tarde
       formatoY: (y) => hhmm(y), rotulosX, meta: alvo,
       series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
@@ -173,6 +174,7 @@ function cartaoSono(dia, ctx) {
     grafico({
       // sem base0: no modelo o eixo vai de 4h a 9h, não do zero
       altura: 160, descricao: 'horas de sono por noite', meta: alvo,
+      xMin: 0, xMax: dias - 1,
       formatoY: (y) => `${Math.round(y)}h`, rotulosX,
       series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
     }));

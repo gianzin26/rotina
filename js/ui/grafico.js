@@ -48,6 +48,8 @@ function passoRedondo(bruto) {
  * @param {number} cfg.altura altura do desenho em pixels
  * @param {Array<{tipo:'barras'|'linha'|'area'|'pontos', serie:string, pontos:Array<{x:number,y:number,situacao?:string}>, marcadores?:boolean}>} cfg.series
  * @param {Array<{x:number, texto:string}>} [cfg.rotulosX]
+ * @param {number} [cfg.xMin] primeira banda da janela, mesmo sem dado nela
+ * @param {number} [cfg.xMax] última banda da janela, mesmo sem dado nela
  * @param {(y:number)=>string} [cfg.formatoY]
  * @param {number} [cfg.meta] linha tracejada de alvo
  * @param {boolean} [cfg.yInvertido] horários: mais cedo em cima
@@ -128,7 +130,10 @@ function desenharSvg(cfg, L, A) {
       passo = passoRedondo(passo * 1.6); // sobe um degrau: 0,5 → 1 → 2 → 2,5 → 5
     }
   }
-  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  // A janela mandada por quem chama vence: senão um dia sem registro encolhe o
+  // eixo, as barras escorregam de banda e os rótulos caem fora do domínio.
+  const x0 = cfg.xMin ?? Math.min(...xs);
+  const x1 = cfg.xMax ?? Math.max(...xs);
 
   // Barra ocupa uma faixa, não um ponto: com escala contínua a primeira e a
   // última ficam metade para fora. Com banda, cada uma senta no meio da sua.
@@ -214,11 +219,16 @@ function desenharSvg(cfg, L, A) {
   }
 
   /* rótulos de data no eixo X */
+  // Largura aproximada de "20/08" no corpo do eixo, com uma folga.
+  const LARGURA_ROTULO = 34;
+  let ultimoX = -Infinity;
   for (const r of (cfg.semRotulos ? [] : cfg.rotulosX || [])) {
+    if (r.x < x0 || r.x > x1) continue;      // fora da janela: não existe eixo para ele
     const x = px(r.x);
+    if (x - ultimoX < LARGURA_ROTULO) continue; // encostaria no anterior
+    ultimoX = x;
     const t = s('text', {
-      x: Math.min(Math.max(x, 14), L - faixa - 4),
-      y: A - 6, 'text-anchor': 'middle', class: 'g-rotulo',
+      x, y: A - 6, 'text-anchor': 'middle', class: 'g-rotulo',
     });
     t.textContent = r.texto;
     svg.append(t);

@@ -94,7 +94,10 @@ function cartaoContagem(dia) {
     return cartao({ titulo: 'Próxima saída', metrica: '—', legenda: 'Nenhum deslocamento na agenda' });
   }
 
-  const destino = trajeto(alvo.o.trajetoId)?.destino || alvo.o.titulo;
+  // descrição do trajeto: de onde para onde, e quanto costuma levar
+  const t = trajeto(alvo.o.trajetoId);
+  const percurso = t ? `${t.origem} → ${t.destino}` : alvo.o.titulo;
+  const estimativa = t?.minutosEstimados ? ` · ~${t.minutosEstimados} min` : '';
   const relogio = h('span', { class: 'contagem' }, '--:--:--');
 
   // um alvo em Date para poder contar segundos, não só minutos
@@ -120,7 +123,7 @@ function cartaoContagem(dia) {
   return cartao({
     titulo: 'Próxima saída',
     periodo: alvo.amanha ? 'Amanhã' : 'Hoje',
-    legenda: `Sair para ${destino} · previsto ${hhmm(alvo.o.inicio)}`,
+    legenda: `${percurso} · sai ${hhmm(alvo.o.inicio)}${estimativa}`,
     classe: 'tipo-transito',
   },
     h('div', { class: 'contagem-linha' }, icone('relogio'), relogio));
@@ -150,6 +153,7 @@ function cartaoHoraDeAcordar(dia, ctx) {
   },
     grafico({
       altura: 140, descricao: `hora de acordar nos últimos ${dias} dias`,
+      xMin: 0, xMax: dias - 1,
       // barras crescendo do chão, como no modelo: mais alto = acordou mais tarde
       formatoY: (y) => hhmm(y), meta: alvo,
       rotulosX: rotulosDeDatas(datas, 5),
@@ -222,6 +226,7 @@ function cartaoSono(dia, ctx) {
     grafico({
       // sem base0: no modelo o eixo vai de 4h a 9h, não do zero
       altura: 140, descricao: 'horas de sono por noite', meta: alvo,
+      xMin: 0, xMax: dias - 1,
       formatoY: (y) => `${Math.round(y)}h`,
       rotulosX: rotulosDeDatas(datas, 5),
       series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
@@ -254,6 +259,7 @@ function cartaoAderencia(dia, ctx) {
   },
     grafico({
       altura: 140, descricao: 'aderência por dia', yMin: 0, yMax: 100, yTicks: 4,
+      xMin: 0, xMax: dias.length - 1,
       formatoY: (y) => `${Math.round(y)}%`,
       rotulosX: dias.map((d, x) => ({
         x, texto: `${DIAS[new Date(`${d}T12:00`).getDay()]} ${d.slice(8)}`,

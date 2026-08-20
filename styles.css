@@ -456,8 +456,9 @@ button { -webkit-tap-highlight-color: transparent; }
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
+  /* a escala iguala a área de tinta entre arquivos de enquadramento diferente */
+  -webkit-mask-size: calc(100% * var(--escala-aba, 1));
+  mask-size: calc(100% * var(--escala-aba, 1));
 }
 /* Tudo preto, como os ícones. O que separa a aba atual é o peso da letra, não
    uma cor mais fraca — desbotar traria o cinza de volta. */
@@ -1706,6 +1707,9 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 
 .creatina-marca.futuro { cursor: default; }
 .creatina-marca.futuro::before { background: transparent; border-style: dashed; }
+
+/* sem número grande a legenda encosta no cabeçalho: precisa do próprio respiro */
+.cartao-metrica.so-legenda { margin-top: var(--esp-1); }
 
 .contagem-linha { display: flex; align-items: center; gap: var(--esp-3); }
 .contagem-linha .icone { width: var(--esp-7); height: var(--esp-7); color: var(--cor, var(--accent)); }

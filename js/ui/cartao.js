@@ -27,16 +27,22 @@ export function cartao(opcoes, ...conteudo) {
       : h('span', { class: 'periodo' }, o.periodo.rotulo || o.periodo)),
     o.acao);
 
-  const metrica = o.metrica != null && h('div', { class: 'cartao-metrica' },
-    h('div', { class: 'metrica-linha' },
-      h('span', { class: 'metrica-num' }, o.metrica,
-        o.unidade && h('span', { class: 'metrica-unidade' }, o.unidade)),
-      o.delta && h('span', { class: `delta ${classeSituacao(o.delta.situacao)}` },
-        o.delta.sentido && icone(o.delta.sentido),
-        o.delta.texto)),
-    o.legenda && h('span', {
-      class: `metrica-legenda ${o.legendaSituacao ? classeSituacao(o.legendaSituacao) : ''}`.trim(),
-    }, o.legenda));
+  const legenda = o.legenda && h('span', {
+    class: `metrica-legenda ${o.legendaSituacao ? classeSituacao(o.legendaSituacao) : ''}`.trim(),
+  }, o.legenda);
+
+  // A legenda vivia dentro do bloco do número grande, então cartão sem número
+  // recebia o texto e o descartava calado — era o caso da Próxima saída.
+  const metrica = o.metrica != null
+    ? h('div', { class: 'cartao-metrica' },
+      h('div', { class: 'metrica-linha' },
+        h('span', { class: 'metrica-num' }, o.metrica,
+          o.unidade && h('span', { class: 'metrica-unidade' }, o.unidade)),
+        o.delta && h('span', { class: `delta ${classeSituacao(o.delta.situacao)}` },
+          o.delta.sentido && icone(o.delta.sentido),
+          o.delta.texto)),
+      legenda)
+    : legenda && h('div', { class: 'cartao-metrica so-legenda' }, legenda);
 
   return h('section', { class: classes }, cabecalho, metrica, ...conteudo);
 }

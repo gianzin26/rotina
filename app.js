@@ -27,6 +27,21 @@ const ABAS = [
   { id: 'ajustes', rotulo: 'Ajustes', view: ajustes },
 ];
 
+/* Os arquivos do Icons8 têm áreas de tinta bem diferentes — medi no PNG: o
+   halter ocupa 46 dos 48px de largura, a lista só 32. Desenhados na mesma
+   caixa, Treino aparece maior que os vizinhos.
+
+   A escala normaliza a MAIOR dimensão de tinta em 34/48 para todos. É ajuste
+   de exibição: o desenho continua o do arquivo, sem redesenho. */
+const ESCALA_ICONE = {
+  visao: 1,        // tinta 34x34
+  hoje: 1.06,      // 32x24
+  semana: 1.06,    // 32x30
+  treino: 0.74,    // 46x28  <= o que destoava
+  corpo: 0.89,     // 38x35
+  ajustes: 1,      // 34x34
+};
+
 const noComputador = () => window.matchMedia('(min-width: 900px)').matches;
 const abaInicial = () => (noComputador() ? 'visao' : 'hoje');
 
@@ -54,8 +69,10 @@ function montarNavegacao() {
         'aria-label': rotulo === aba.rotulo ? null : aba.rotulo,
         'aria-current': aba.id === abaAtual ? 'page' : null,
         onclick: () => ir(aba.id),
-      }, variaveis(h('span', { class: 'aba-icone', 'aria-hidden': 'true' }),
-        { 'arte-aba': `url("./icons/nav/${aba.id}.png")` }),
+      }, variaveis(h('span', { class: 'aba-icone', 'aria-hidden': 'true' }), {
+        'arte-aba': `url("./icons/nav/${aba.id}.png")`,
+        'escala-aba': ESCALA_ICONE[aba.id] ?? 1,
+      }),
       h('span', {}, rotulo)));
     }
   }
