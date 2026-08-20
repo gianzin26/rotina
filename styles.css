@@ -26,6 +26,11 @@
   /* As cores acima são de preenchimento. Como texto pequeno elas não passam
      no contraste AA, então cada uma tem uma variante escurecida para letra. */
   --accent-texto: #1D63D2;
+  /* Fundo de botão sólido. Separado de --accent-texto porque aquele precisa
+     clarear no tema escuro para servir de texto, e clarear um fundo que
+     carrega letra branca destrói o contraste. */
+  --acento-solido: #1D63D2;
+  --perigo-solido: #DC2626;
   /* Barra colorida é informação, não enfeite: precisa de 3:1 contra o cartão.
      O verde e o amarelo vivos param em 2,3:1 e 2,2:1, então o gráfico usa um
      degrau mais escuro. O vermelho já passa em 3,8:1 e fica como está. */
@@ -159,6 +164,7 @@
   /* O preto do menu é o do próprio arquivo dos ícones (#000), não o --text
      do app (#111827), para o rótulo bater exatamente com o desenho. */
   --preto-menu: #000000;
+  --abas-fundo: rgba(255, 255, 255, .88);
   --icone-g: 24px;
 
   /* ---- linha do tempo ----
@@ -185,6 +191,118 @@
   --g-barra: 4px;
   --g-barra-passo: 10px;
 }
+/* ---------------- tema escuro ----------------
+   Preto de verdade: o fundo e o cartão são #000, não cinza escuro. O que
+   separa um do outro é a borda, não uma superfície mais clara — foi a única
+   forma de manter a anatomia dos cartões sem clarear o fundo.
+
+   Os tokens são redefinidos em três lugares: no `prefers-color-scheme` para
+   seguir o sistema, e em [data-tema] para a escolha manual vencer nos dois
+   sentidos. Nenhuma cor nasce dentro de um bloco só de tema; todas existem
+   no :root claro acima. */
+/* Segue o sistema, a menos que você tenha escolhido claro à mão. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    /* os sólidos não mudam: escurecê-los ou clareá-los quebraria a letra branca */
+    --acento-solido: #1D63D2;
+    --perigo-solido: #DC2626;
+    --bg: #000000;
+    --card: #000000;
+    --border: #2E2E32;
+    --text: #FFFFFF;
+    --text-soft: #9CA3AF;
+    --accent: #3B82F6;
+    --grid: #26262A;
+
+    --accent-texto: #7DB2FB;
+    --verde-texto: #4ADE80;
+    --amarelo-texto: #FBBF24;
+    --vermelho-texto: #F87171;
+
+    /* no preto o tom vivo já passa de sobra; não precisa do degrau escuro */
+    --verde-grafico: #22C55E;
+    --amarelo-grafico: #F59E0B;
+    --vermelho-grafico: #EF4444;
+
+    --tinta-accent: #10243F;
+    --tinta-verde: #0C2A18;
+    --tinta-amarela: #2E2008;
+    --tinta-vermelha: #2E1414;
+    --tinta-neutra: #17171A;
+
+    --cal-verde: #14532D;
+    --cal-amarelo: #4A3208;
+    --cal-vermelho: #4C1D1D;
+
+    --tinta-sono: #221A3D;
+    --tinta-transito: #06303A;
+    --tinta-trabalho: #17171A;
+    --tinta-aula: #2A1440;
+    --tinta-treino: #2E2008;
+
+    --sobreposicao: rgba(0, 0, 0, .64);
+    --aviso-fundo: #2C2C2E;
+
+    /* sombra não existe sobre preto: quem desenha o relevo é a borda */
+    --sombra-cartao: none;
+    --sombra-flutuante: 0 4px 16px rgba(0, 0, 0, .6);
+
+    --preto-menu: #FFFFFF;
+    --abas-fundo: rgba(0, 0, 0, .88);
+  }
+}
+
+/* A escolha manual vence nos dois sentidos. */
+:root[data-tema="escuro"] {
+  /* os sólidos não mudam: escurecê-los ou clareá-los quebraria a letra branca */
+  --acento-solido: #1D63D2;
+  --perigo-solido: #DC2626;
+  --bg: #000000;
+  --card: #000000;
+  --border: #2E2E32;
+  --text: #FFFFFF;
+  --text-soft: #9CA3AF;
+  --accent: #3B82F6;
+  --grid: #26262A;
+
+  --accent-texto: #7DB2FB;
+  --verde-texto: #4ADE80;
+  --amarelo-texto: #FBBF24;
+  --vermelho-texto: #F87171;
+
+  /* no preto o tom vivo já passa de sobra; não precisa do degrau escuro */
+  --verde-grafico: #22C55E;
+  --amarelo-grafico: #F59E0B;
+  --vermelho-grafico: #EF4444;
+
+  --tinta-accent: #10243F;
+  --tinta-verde: #0C2A18;
+  --tinta-amarela: #2E2008;
+  --tinta-vermelha: #2E1414;
+  --tinta-neutra: #17171A;
+
+  --cal-verde: #14532D;
+  --cal-amarelo: #4A3208;
+  --cal-vermelho: #4C1D1D;
+
+  --tinta-sono: #221A3D;
+  --tinta-transito: #06303A;
+  --tinta-trabalho: #17171A;
+  --tinta-aula: #2A1440;
+  --tinta-treino: #2E2008;
+
+  --sobreposicao: rgba(0, 0, 0, .64);
+  --aviso-fundo: #2C2C2E;
+
+  /* sombra não existe sobre preto: quem desenha o relevo é a borda */
+  --sombra-cartao: none;
+  --sombra-flutuante: 0 4px 16px rgba(0, 0, 0, .6);
+
+  --preto-menu: #FFFFFF;
+  --abas-fundo: rgba(0, 0, 0, .88);
+}
+
+
 
 * { box-sizing: border-box; }
 
@@ -305,7 +423,7 @@ button { -webkit-tap-highlight-color: transparent; }
   display: flex;
   height: calc(var(--altura-abas) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: rgba(255, 255, 255, .88);
+  background: var(--abas-fundo);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: var(--traco) solid var(--border);
@@ -601,10 +719,10 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
 .botao:hover { background: var(--bg); }
 .botao:active { opacity: .7; }
 .botao .icone { width: var(--icone-p); height: var(--icone-p); }
-.botao.primario { background: var(--accent-texto); border-color: transparent; color: var(--sobre-acento); font-weight: var(--peso-semi); }
+.botao.primario { background: var(--acento-solido); border-color: transparent; color: var(--sobre-acento); font-weight: var(--peso-semi); }
 .botao.primario:hover { filter: brightness(1.08); }
 .botao.ativo { background: var(--tinta-verde); border-color: transparent; color: var(--verde-texto); font-weight: var(--peso-semi); }
-.botao.perigo { background: var(--vermelho-texto); border-color: transparent; color: var(--sobre-acento); font-weight: var(--peso-semi); }
+.botao.perigo { background: var(--perigo-solido); border-color: transparent; color: var(--sobre-acento); font-weight: var(--peso-semi); }
 .botao.perigo-texto { border-color: transparent; background: none; color: var(--vermelho-texto); }
 .botao.discreto { border-color: transparent; background: none; }
 .botao.largura-total { width: 100%; }

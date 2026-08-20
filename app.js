@@ -5,6 +5,7 @@ import { carregar, definirRelatorDeFalha } from './js/nucleo/store.js';
 import { iniciarAtualizacoes } from './js/ui/atualizacao.js';
 import { $, h, limpar, variaveis } from './js/ui/dom.js';
 import { icone } from './js/ui/icones.js';
+import { aplicarTema, observarSistema } from './js/ui/tema.js';
 import * as ajustes from './js/ui/telas/ajustes.js';
 import * as corpo from './js/ui/telas/corpo.js';
 import * as hoje from './js/ui/telas/hoje.js';
@@ -134,6 +135,10 @@ document.addEventListener('visibilitychange', () => {
 
 /* Redesenha quando outra aba do navegador grava no mesmo localStorage. */
 window.addEventListener('storage', () => { carregar(); desenhar(); });
+
+/* Tema antes de desenhar, para não haver um piscar claro no escuro. */
+aplicarTema();
+observarSistema();
 
 definirRelatorDeFalha((mensagem) => alert(mensagem));
 

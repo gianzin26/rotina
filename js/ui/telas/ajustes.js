@@ -5,6 +5,7 @@ import {
   desligar as desligarDemo, ligado as demoLigado, ligar as ligarDemo,
 } from '../../nucleo/demo.js';
 import { resumoSemana } from '../../nucleo/resumo.js';
+import { definirTema, tema as temaAtual } from '../../nucleo/tema.js';
 import {
   TOLERANCIAS_PADRAO, estado, mudar, sessao, substituirEstado, trajeto, zerar,
 } from '../../nucleo/store.js';
@@ -13,9 +14,11 @@ import { baixarJSON, copiar, lerArquivo } from '../arquivos.js';
 import { etiqueta, linha } from '../cartao.js';
 import { anexar, h, vazio } from '../dom.js';
 import {
-  aviso, campo, confirmar, entradaHora, entradaNumero, entradaTexto, folha,
+  aviso, campo, confirmar, entradaHora, entradaNumero, entradaTexto, fecharFolha,
+  folha, segmentos,
 } from '../folha.js';
 import { icone } from '../icones.js';
+import { aplicarTema } from '../tema.js';
 
 const TIPOS = [
   { id: 'acordar', rotulo: 'Acordar' },
@@ -49,6 +52,9 @@ export function render(tela, ctx) {
         item('Exportar backup', 'Arquivo JSON com tudo',
           emDemo(() => { const n = baixarJSON(); aviso(`Salvo: ${n}`); })),
         item('Importar backup', 'Substitui os dados deste aparelho', emDemo(() => abrirArquivo(ctx))),
+      ]),
+      grupo('Aparência', [
+        item('Tema', ROTULO_TEMA[temaAtual()], () => folhaTema(ctx)),
       ]),
       grupo('Demonstração', [
         item('Modo demonstração', demoLigado() ? 'Ligado · dados de exemplo' : 'Desligado',
@@ -101,6 +107,19 @@ async function alternarDemo(ctx) {
     aviso(erro.message);
   }
   ctx.recarregar();
+}
+
+const ROTULO_TEMA = { auto: 'Automático · segue o sistema', claro: 'Claro', escuro: 'Escuro' };
+
+function folhaTema(ctx) {
+  folha('Tema', () => h('div', { class: 'pilha' },
+    h('p', { class: 'texto-suave' },
+      'No escuro o fundo é preto absoluto, não cinza. Automático acompanha o ajuste do aparelho.'),
+    segmentos(
+      [{ id: 'auto', rotulo: 'Automático' }, { id: 'claro', rotulo: 'Claro' }, { id: 'escuro', rotulo: 'Escuro' }],
+      temaAtual(),
+      (v) => { definirTema(v); aplicarTema(); fecharFolha(); ctx.recarregar(); },
+    )));
 }
 
 function grupo(titulo, itens) {
