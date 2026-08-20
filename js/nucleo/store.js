@@ -149,6 +149,11 @@ export function carregar() {
 let relatarFalha = () => {};
 export function definirRelatorDeFalha(fn) { relatarFalha = fn; }
 
+/* Avisado depois de cada gravação. É por aqui que a sincronização descobre o
+   que mudou, sem que os 32 pontos de escrita precisem saber que ela existe. */
+let aoSalvar = () => {};
+export function definirAoSalvar(fn) { aoSalvar = fn; }
+
 export function salvar() {
   try {
     localStorage.setItem(CHAVE, JSON.stringify(estado));
@@ -156,6 +161,7 @@ export function salvar() {
     console.error('Não foi possível salvar.', e);
     relatarFalha('Não foi possível salvar os dados neste dispositivo. Verifique o espaço disponível.');
   }
+  aoSalvar();
 }
 
 /** Toda escrita passa por aqui: muta, grava e notifica as telas. */

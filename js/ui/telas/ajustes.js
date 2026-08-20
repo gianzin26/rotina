@@ -4,6 +4,10 @@
 import {
   desligar as desligarDemo, ligado as demoLigado, ligar as ligarDemo,
 } from '../../nucleo/demo.js';
+import {
+  codigoNovo, configuracao as configSync, configurada as nuvemConfigurada,
+  configurar as configurarSync, desconfigurar as desconfigurarSync, sincronizar,
+} from '../../nucleo/nuvem.js';
 import { resumoSemana } from '../../nucleo/resumo.js';
 import { definirTema, tema as temaAtual } from '../../nucleo/tema.js';
 import {
@@ -52,6 +56,10 @@ export function render(tela, ctx) {
         item('Exportar backup', 'Arquivo JSON com tudo',
           emDemo(() => { const n = baixarJSON(); aviso(`Salvo: ${n}`); })),
         item('Importar backup', 'Substitui os dados deste aparelho', emDemo(() => abrirArquivo(ctx))),
+      ]),
+      grupo('Sincronização', [
+        item('Entre meus aparelhos', textoSync(), () => folhaSync(ctx),
+          nuvemConfigurada() ? 'ativo' : null),
       ]),
       grupo('Aparência', [
         item('Tema', ROTULO_TEMA[temaAtual()], () => folhaTema(ctx)),
@@ -107,6 +115,56 @@ async function alternarDemo(ctx) {
     aviso(erro.message);
   }
   ctx.recarregar();
+}
+
+function textoSync() {
+  if (!nuvemConfigurada()) return 'Desligada';
+  const { ultimo, pendente } = configSync();
+  if (pendente) return 'Ligada · com envio pendente';
+  if (!ultimo) return 'Ligada · ainda não sincronizou';
+  const d = new Date(ultimo);
+  return `Ligada · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+const RESPOSTA = {
+  sincronizado: 'Sincronizado.',
+  offline: 'Sem conexão agora. Vai subir sozinho depois.',
+  desligado: 'Preencha o endereço e o código primeiro.',
+};
+
+function folhaSync(ctx) {
+  const atual = configSync();
+  let url = atual.url;
+  let codigo = atual.codigo;
+
+  folha('Sincronização', (fechar) => h('div', { class: 'pilha' },
+    h('p', { class: 'texto-suave' },
+      'Use o mesmo código nos três aparelhos. Quem tiver o código lê e escreve '
+      + 'seus dados, então trate-o como senha.'),
+    campo('Endereço do servidor', entradaTexto(url, (v) => { url = v; }),
+      'A URL do seu Worker, algo como https://rotina-sync.SEU-NOME.workers.dev'),
+    campo('Código', entradaTexto(codigo, (v) => { codigo = v; })),
+    h('button', {
+      class: 'botao largura-total',
+      onclick: (e) => {
+        codigo = codigoNovo();
+        e.target.closest('.pilha').querySelectorAll('input')[1].value = codigo;
+      },
+    }, icone('mais'), 'Gerar um código novo'),
+    h('button', {
+      class: 'botao primario largura-total',
+      onclick: async () => {
+        configurarSync({ url, codigo });
+        const r = await sincronizar();
+        aviso(r.mensagem ? `Falhou: ${r.mensagem}` : RESPOSTA[r.estado] || 'Pronto.');
+        fechar();
+        ctx.recarregar();
+      },
+    }, 'Salvar e sincronizar agora'),
+    nuvemConfigurada() && h('button', {
+      class: 'botao perigo-texto largura-total',
+      onclick: () => { desconfigurarSync(); aviso('Sincronização desligada.'); fechar(); ctx.recarregar(); },
+    }, 'Desligar neste aparelho')));
 }
 
 const ROTULO_TEMA = { auto: 'Automático · segue o sistema', claro: 'Claro', escuro: 'Escuro' };

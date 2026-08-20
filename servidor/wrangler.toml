@@ -1,0 +1,11 @@
+name = "rotina-sync"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# Trave a origem depois que funcionar: assim só o seu site pode falar com ele.
+[vars]
+ORIGEM = "https://gianzin26.github.io"
+
+[[kv_namespaces]]
+binding = "ROTINA"
+id = "PREENCHER_COM_O_ID_DO_KV"

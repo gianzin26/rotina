@@ -1,6 +1,7 @@
 // app.js — casca do app: abas, rota por hash e o ciclo de redesenho.
 
 import { desligar as desligarDemo, ligado as demoLigado } from './js/nucleo/demo.js';
+import { configurada as sincConfigurada, observarEscritas, sincronizar } from './js/nucleo/nuvem.js';
 import { carregar, definirRelatorDeFalha } from './js/nucleo/store.js';
 import { iniciarAtualizacoes } from './js/ui/atualizacao.js';
 import { $, h, limpar, variaveis } from './js/ui/dom.js';
@@ -143,7 +144,25 @@ observarSistema();
 definirRelatorDeFalha((mensagem) => alert(mensagem));
 
 carregar();
+observarEscritas();
 ir(location.hash.slice(1) || abaInicial());
+
+/* Sincroniza ao abrir, ao voltar para o app e quando a rede volta. Um envio de
+   cada vez, e o redesenho só acontece se algo mudou de verdade. */
+let sincronizando = false;
+async function sincronizarSePuder() {
+  if (sincronizando || !sincConfigurada()) return;
+  sincronizando = true;
+  try {
+    const r = await sincronizar();
+    if (r.estado === 'sincronizado') desenhar();
+  } finally {
+    sincronizando = false;
+  }
+}
+sincronizarSePuder();
+window.addEventListener('online', sincronizarSePuder);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizarSePuder(); });
 
 /* Girar o aparelho ou redimensionar a janela troca a barra pela lateral, e com
    isso o rótulo de Visão geral. A aba em si continua onde estava. */
