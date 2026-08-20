@@ -7,3 +7,6 @@ rotina-*.json
 
 _site/
 .DS_Store
+# cache local do wrangler: contém id de conta e e-mail
+.wrangler/
+node_modules/

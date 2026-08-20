@@ -60,6 +60,10 @@ export function observarEscritas() {
 export async function sincronizar() {
   const d = ler();
   if (!d.url || !d.codigo) return { estado: 'desligado' };
+  // recusa aqui em vez de deixar o servidor devolver um 400 sem explicação
+  if (!CODIGO_VALIDO.test(d.codigo)) {
+    return { estado: 'erro', mensagem: 'o código precisa ter de 12 a 40 caracteres, só letras minúsculas, números e hífen' };
+  }
 
   let remoto = null;
   try {
@@ -106,9 +110,16 @@ export async function sincronizar() {
   return { estado: 'sincronizado', conflitos: (juntos.conflitos || []).length };
 }
 
-/** Código novo, aleatório, para o primeiro aparelho gerar. */
+/** A mesma regra que o servidor aplica, para recusar aqui e explicar direito. */
+export const CODIGO_VALIDO = /^[a-z0-9-]{12,40}$/;
+
+/**
+ * Código novo, aleatório. São 12 letras em quatro grupos — com os hífens dá 15
+ * caracteres, dentro dos 12 a 40 que o servidor aceita. Com 9 letras o
+ * resultado tinha 11 e era recusado com 400.
+ */
 export function codigoNovo() {
-  const b = new Uint8Array(9);
+  const b = new Uint8Array(12);
   (globalThis.crypto || {}).getRandomValues?.(b);
   return [...b].map((n) => 'abcdefghjkmnpqrstuvwxyz23456789'[n % 31]).join('')
     .replace(/(.{3})(?=.)/g, '$1-');
