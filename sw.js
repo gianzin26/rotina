@@ -33,6 +33,7 @@ const ARQUIVOS = [
   './js/nucleo/nuvem.js',
   './fotos/adidas-racer.png',
   './js/nucleo/gpx.js',
+  './js/nucleo/importar.js',
   './js/nucleo/percurso.js',
   './js/nucleo/sincronizacao.js',
   './js/nucleo/tema.js',

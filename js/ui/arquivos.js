@@ -43,3 +43,36 @@ export function lerArquivo(arquivo) {
     fr.readAsText(arquivo);
   });
 }
+
+/** Lê o arquivo como texto puro, sem interpretar. */
+export function lerTexto(arquivo) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result));
+    fr.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+    fr.readAsText(arquivo);
+  });
+}
+
+/**
+ * Abre o seletor de arquivos do sistema.
+ *
+ * O input precisa estar no documento para o clique valer, e sai de cena
+ * assim que termina.
+ *
+ * @param {string} tipos valor do accept
+ * @param {(arquivo:File)=>void} aoEscolher
+ */
+export function escolherArquivo(tipos, aoEscolher) {
+  const entrada = document.createElement('input');
+  entrada.type = 'file';
+  entrada.accept = tipos;
+  entrada.className = 'oculto';
+  entrada.onchange = async (e) => {
+    const arquivo = e.target.files?.[0];
+    entrada.remove();
+    if (arquivo) await aoEscolher(arquivo);
+  };
+  document.body.append(entrada);
+  entrada.click();
+}

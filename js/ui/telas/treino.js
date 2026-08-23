@@ -5,6 +5,7 @@
 // mudou foi a tela, não os dados.
 
 import { iniciarCorrida } from '../../nucleo/acoes.js';
+import { importarGPX } from '../../nucleo/importar.js';
 import { ocorrencias } from '../../nucleo/agenda.js';
 import { criarCronometro, mmss } from '../../nucleo/cronometro.js';
 import { estado, mudar } from '../../nucleo/store.js';
@@ -12,12 +13,13 @@ import {
   caloriasEstimadas, corridas, kmPorTenis, posicaoNaDistancia, testes5k,
 } from '../../nucleo/treino.js';
 import { resumo as resumoPeso } from '../../nucleo/peso.js';
-import { agoraMin, dataCurta, diaLogico, hhmm, nUm, uid } from '../../nucleo/util.js';
+import { agoraMin, dataCurta, dataLonga, diaLogico, hhmm, nUm, uid } from '../../nucleo/util.js';
 import { avisarFase, avisarInicio, prepararAudio, segurarTela, soltarTela } from '../alarme.js';
+import { escolherArquivo, lerTexto } from '../arquivos.js';
 import {
   cartao, dado, destaque, etiqueta, fileiraDados, linha, metricas, titulo,
 } from '../cartao.js';
-import { anexar, classeSituacao, h, variaveis } from '../dom.js';
+import { anexar, classeSituacao, h, variaveis, vazio } from '../dom.js';
 import {
   aviso, campo, confirmar, entradaNumero, entradaTexto, escolherNumero, fileiraRPE, folha,
 } from '../folha.js';
@@ -29,6 +31,20 @@ let cron = null;
 let cronConfig = null;
 let pintarCron = () => {};
 
+function importarCorrida(ctx) {
+  escolherArquivo('.gpx,application/gpx+xml,text/xml', async (arquivo) => {
+    try {
+      const { corrida, substituiu } = importarGPX(await lerTexto(arquivo));
+      aviso(substituiu
+        ? `Corrida de ${dataCurta(corrida.data)} atualizada.`
+        : `Corrida de ${dataCurta(corrida.data)} importada.`);
+      ctx.recarregar();
+    } catch (erro) {
+      aviso(erro.message);
+    }
+  });
+}
+
 export function render(tela, ctx) {
   const grade = h('div', { class: 'grade' });
   anexar(grade, cartaoDoDia(ctx), cartaoTenis(ctx), cartaoCronometro(ctx), cartaoCorridas());
@@ -37,7 +53,10 @@ export function render(tela, ctx) {
     h('header', { class: 'cabecalho' },
       h('div', {},
         h('h1', {}, 'Treino'),
-        h('p', { class: 'cabecalho-sub' }, 'Corrida'))),
+        h('p', { class: 'cabecalho-sub' }, 'Corrida')),
+      h('div', { class: 'cabecalho-acoes' },
+        h('button', { class: 'botao', onclick: () => importarCorrida(ctx) },
+          icone('subir'), 'Importar'))),
     grade);
 }
 
@@ -159,7 +178,11 @@ function registrarCorridaConcluida(minutos, ctx) {
 
 function cartaoDoDia(ctx) {
   const dia = diaLogico();
-  const c = corridas().find((x) => x.data === dia) || null;
+  const deHoje = corridas().find((x) => x.data === dia) || null;
+  // sem corrida hoje, mostra a última: importar um arquivo de sábado na segunda
+  // não pode parecer que não aconteceu nada
+  const c = deHoje || corridas().find((x) => x.distanciaKm > 0 || x.minutos > 0) || null;
+  const ehHoje = !!deHoje;
   const prevista = previstaHoje(dia);
 
   const garantir = () => c || iniciarCorrida(dia, null, agoraMin());
@@ -180,6 +203,7 @@ function cartaoDoDia(ctx) {
   };
 
   if (!c || (!(c.distanciaKm > 0) && !(c.minutos > 0))) {
+    // aqui c pode ser o registro vazio de hoje, criado ao tocar num campo
     return cartao({
       titulo: 'Corrida de hoje',
       periodo: prevista ? hhmm(prevista.inicio) : 'avulsa',
@@ -187,7 +211,12 @@ function cartaoDoDia(ctx) {
       legenda: prevista
         ? `previsto para ${hhmm(prevista.inicio)} · ainda não registrada`
         : 'sem corrida na rotina de hoje',
-    }, entradaRapida(c, grava, definirPace, ritmo));
+    },
+      entradaRapida(c, grava, definirPace, ritmo),
+      h('button', {
+        class: 'botao primario largura-total',
+        onclick: () => importarCorrida(ctx),
+      }, icone('subir'), 'Importar arquivo do Strava'));
   }
 
   const cheias = (c.parciais || []).filter((p) => p.completa && p.pace > 0);
@@ -197,7 +226,8 @@ function cartaoDoDia(ctx) {
   const variacao = compararMetades(cheias);
 
   return cartao({
-    titulo: c.nome || 'Corrida de hoje',
+    titulo: c.nome || (ehHoje ? 'Corrida de hoje' : 'Última corrida'),
+    subtitulo: ehHoje ? null : dataLonga(c.data),
     periodo: c.inicio || (prevista ? hhmm(prevista.inicio) : 'avulsa'),
     // o pace é o número que o corredor procura primeiro
     metrica: ritmo != null ? paceTexto(ritmo) : '—',
