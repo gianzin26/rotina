@@ -84,6 +84,13 @@ function diferencaDeTempo(minutos) {
 /** Milhar com ponto, como 1.111 m. */
 const inteiro = (v) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v);
 
+/* As fotos que acompanham o app. Ficam listadas aqui porque a pasta não pode
+   ser lida em tempo de execução — acrescentar uma foto é acrescentar uma linha. */
+const FOTOS = [
+  { arquivo: '', nome: 'Sem foto' },
+  { arquivo: 'adidas-racer.png', nome: 'Adidas Racer TR23 preto' },
+];
+
 /** A corrida prevista para hoje na rotina, se houver. */
 function previstaHoje(dia) {
   return ocorrencias(dia).filter((o) => o.tipo === 'corrida').sort((a, b) => a.inicio - b.inicio)[0] || null;
@@ -404,8 +411,12 @@ function folhaTenis(t, ctx) {
     campo('Nome', entradaTexto(novo.nome, (v) => { novo.nome = v; })),
     campo('Modelo', entradaTexto(novo.modelo || '', (v) => { novo.modelo = v; }),
       'Aparece abaixo do nome, como "Adizero SL"'),
-    campo('Arquivo da foto', entradaTexto(novo.foto || '', (v) => { novo.foto = v.trim(); }),
-      'O nome do arquivo dentro da pasta fotos, como "adidas-preto.png"'),
+      campo('Foto', h('select', {
+        'aria-label': 'Foto do tênis',
+        onchange: (e) => { novo.foto = e.target.value; },
+      }, FOTOS.map((f) => h('option', {
+        value: f.arquivo, selected: (novo.foto || '') === f.arquivo,
+      }, f.nome)))),
     h('div', { class: 'grade-2' },
       campo('Km já rodados', entradaNumero(novo.kmInicial, (v) => { novo.kmInicial = v || 0; }, { step: 1 })),
       campo('Trocar em (km)', entradaNumero(novo.alertaKm, (v) => { novo.alertaKm = v || 700; }, { step: 50 }))),
