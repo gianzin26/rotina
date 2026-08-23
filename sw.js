@@ -31,6 +31,7 @@ const ARQUIVOS = [
   './js/nucleo/janelas.js',
   './js/nucleo/metas.js',
   './js/nucleo/nuvem.js',
+  './js/nucleo/gpx.js',
   './js/nucleo/percurso.js',
   './js/nucleo/sincronizacao.js',
   './js/nucleo/tema.js',

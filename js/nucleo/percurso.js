@@ -89,3 +89,68 @@ export function comprimentoKm(coordenadas) {
   }
   return total;
 }
+
+/** O inverso de `decodificar`, para guardar o traçado compacto. */
+export function codificar(coordenadas, precisao = 5) {
+  const f = 10 ** precisao;
+  let lat = 0;
+  let lng = 0;
+  let saida = '';
+  const pedaco = (v) => {
+    let n = v < 0 ? ~(v << 1) : (v << 1);
+    let texto = '';
+    while (n >= 0x20) { texto += String.fromCharCode((0x20 | (n & 0x1f)) + 63); n >>= 5; }
+    return texto + String.fromCharCode(n + 63);
+  };
+  for (const [la, ln] of coordenadas) {
+    const a = Math.round(la * f);
+    const b = Math.round(ln * f);
+    saida += pedaco(a - lat) + pedaco(b - lng);
+    lat = a; lng = b;
+  }
+  return saida;
+}
+
+/**
+ * Reduz o número de pontos preservando a forma (Douglas-Peucker).
+ *
+ * Um GPX de corrida traz um ponto por segundo — alguns milhares. Guardar tudo
+ * incharia o estado que a sincronização carrega. A simplificação joga fora o
+ * que não muda o desenho: em linha reta, dez pontos e dois desenham igual.
+ *
+ * @param {Array<[number,number]>} pontos
+ * @param {number} tolerancia desvio máximo aceito, em graus
+ */
+export function simplificar(pontos, tolerancia = 0.00004) {
+  if (pontos.length < 3) return pontos.slice();
+
+  const distanciaDaReta = (p, a, b) => {
+    const [py, px] = p; const [ay, ax] = a; const [by, bx] = b;
+    const dx = bx - ax; const dy = by - ay;
+    const den = dx * dx + dy * dy;
+    if (den === 0) return Math.hypot(px - ax, py - ay);
+    // projeção do ponto sobre o segmento, limitada às pontas
+    const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / den));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  };
+
+  const manter = new Uint8Array(pontos.length);
+  manter[0] = 1;
+  manter[pontos.length - 1] = 1;
+  // pilha em vez de recursão: percurso longo estouraria a pilha de chamadas
+  const pendentes = [[0, pontos.length - 1]];
+  while (pendentes.length) {
+    const [ini, fim] = pendentes.pop();
+    let pior = tolerancia;
+    let onde = -1;
+    for (let i = ini + 1; i < fim; i++) {
+      const d = distanciaDaReta(pontos[i], pontos[ini], pontos[fim]);
+      if (d > pior) { pior = d; onde = i; }
+    }
+    if (onde !== -1) {
+      manter[onde] = 1;
+      pendentes.push([ini, onde], [onde, fim]);
+    }
+  }
+  return pontos.filter((_, i) => manter[i]);
+}
