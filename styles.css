@@ -1711,6 +1711,44 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 /* sem número grande a legenda encosta no cabeçalho: precisa do próprio respiro */
 .cartao-metrica.so-legenda { margin-top: var(--esp-1); }
 
+/* ---------------- traçado do percurso ---------------- */
+
+.percurso {
+  width: 100%;
+  height: calc(var(--percurso-altura, 180) * 1px);
+  margin-top: var(--esp-3);
+}
+
+.percurso-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.percurso-linha {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.percurso-sombra {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .16;
+}
+
+.percurso-inicio { fill: var(--verde-grafico); stroke: var(--card); stroke-width: 2; }
+.percurso-fim { fill: var(--card); stroke: var(--accent); stroke-width: 3; }
+
+.percurso-vazio {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-soft);
+  font-size: var(--texto-legenda);
+}
+
 .contagem-linha { display: flex; align-items: center; gap: var(--esp-3); }
 .contagem-linha .icone { width: var(--esp-7); height: var(--esp-7); color: var(--cor, var(--accent)); }
 .contagem {
