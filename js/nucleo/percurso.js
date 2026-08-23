@@ -125,13 +125,14 @@ export function simplificar(pontos, tolerancia = 0.00004) {
   if (pontos.length < 3) return pontos.slice();
 
   const distanciaDaReta = (p, a, b) => {
-    const [py, px] = p; const [ay, ax] = a; const [by, bx] = b;
+    // nomes curtos: p é o ponto, a e b são as pontas do segmento
+    const [pontoY, pontoX] = p; const [ay, ax] = a; const [by, bx] = b;
     const dx = bx - ax; const dy = by - ay;
     const den = dx * dx + dy * dy;
-    if (den === 0) return Math.hypot(px - ax, py - ay);
+    if (den === 0) return Math.hypot(pontoX - ax, pontoY - ay);
     // projeção do ponto sobre o segmento, limitada às pontas
-    const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / den));
-    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+    const t = Math.max(0, Math.min(1, ((pontoX - ax) * dx + (pontoY - ay) * dy) / den));
+    return Math.hypot(pontoX - (ax + t * dx), pontoY - (ay + t * dy));
   };
 
   const manter = new Uint8Array(pontos.length);
