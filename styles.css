@@ -160,6 +160,10 @@
   --aviso-acima: 96px;
   --icone-p: 16px;
   --icone-m: 20px;
+  --tenis-palco: 92px;
+  /* claro nos dois temas: a foto do tênis é preta */
+  --palco-foto: #F2F2F4;
+  --palco-vazio: #A8A8AE;
   --icone-menu: 24px;      /* a arte do menu tem margem própria, pede mais área */
   /* O preto do menu é o do próprio arquivo dos ícones (#000), não o --text
      do app (#111827), para o rótulo bater exatamente com o desenho. */
@@ -1710,6 +1714,67 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 
 /* sem número grande a legenda encosta no cabeçalho: precisa do próprio respiro */
 .cartao-metrica.so-legenda { margin-top: var(--esp-1); }
+
+/* ---------------- tênis de corrida ---------------- */
+
+.tenis-lista { display: flex; flex-direction: column; gap: var(--esp-3); }
+
+.tenis {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-4);
+  width: 100%;
+  padding: var(--esp-3);
+  border: var(--traco) solid var(--border);
+  border-radius: var(--raio-cartao);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* O palco é claro nos dois temas de propósito: a foto do tênis é preta, e
+   sobre fundo preto ela desapareceria. */
+.tenis-palco {
+  flex: none;
+  width: var(--tenis-palco);
+  height: var(--tenis-palco);
+  display: grid;
+  place-items: center;
+  border-radius: var(--raio-g);
+  background: var(--palco-foto);
+  overflow: hidden;
+}
+
+.tenis-foto { width: 100%; height: 100%; object-fit: contain; }
+
+.tenis-sem-foto { display: grid; place-items: center; color: var(--palco-vazio); }
+.tenis-sem-foto .icone { width: var(--esp-7); height: var(--esp-7); }
+
+.tenis-dados { display: flex; flex-direction: column; gap: var(--esp-1); min-width: 0; flex: 1; }
+.tenis-nome { font-weight: var(--peso-semi); font-size: var(--texto-cartao); }
+.tenis-modelo { font-size: var(--texto-legenda); color: var(--text-soft); }
+
+.tenis-numeros { display: flex; align-items: baseline; justify-content: space-between; gap: var(--esp-2); }
+.tenis-km {
+  font-family: var(--font-display);
+  font-size: var(--texto-cartao);
+  font-weight: var(--peso-forte);
+  font-variant-numeric: tabular-nums;
+}
+.tenis-km-unidade { font-size: var(--texto-legenda); color: var(--text-soft); margin-left: 2px; }
+
+.tenis-barra { height: 6px; border-radius: 3px; background: var(--tinta-neutra); overflow: hidden; }
+.tenis-barra-cheia {
+  height: 100%;
+  border-radius: 3px;
+  width: calc(var(--fracao) * 100%);
+  background: var(--verde-grafico);
+}
+.tenis-barra-cheia.amarelo { background: var(--amarelo-grafico); }
+.tenis-barra-cheia.vermelho { background: var(--vermelho-grafico); }
+
+.tenis-rodape { font-size: var(--texto-legenda); color: var(--text-soft); }
 
 /* ---------------- traçado do percurso ---------------- */
 

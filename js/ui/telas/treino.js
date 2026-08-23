@@ -9,12 +9,15 @@ import { ocorrencias } from '../../nucleo/agenda.js';
 import { criarCronometro, mmss } from '../../nucleo/cronometro.js';
 import { estado, mudar } from '../../nucleo/store.js';
 import { corridas, kmPorTenis, testes5k } from '../../nucleo/treino.js';
-import { agoraMin, dataCurta, diaLogico, duracao, hhmm, nUm } from '../../nucleo/util.js';
+import { agoraMin, dataCurta, diaLogico, duracao, hhmm, nUm, uid } from '../../nucleo/util.js';
 import { avisarFase, avisarInicio, prepararAudio, segurarTela, soltarTela } from '../alarme.js';
 import { cartao, dado, etiqueta, fileiraDados, linha, titulo } from '../cartao.js';
-import { anexar, h } from '../dom.js';
-import { aviso, campo, entradaNumero, escolherNumero, fileiraRPE, folha } from '../folha.js';
+import { anexar, classeSituacao, h, variaveis } from '../dom.js';
+import {
+  aviso, campo, confirmar, entradaNumero, entradaTexto, escolherNumero, fileiraRPE, folha,
+} from '../folha.js';
 import { icone } from '../icones.js';
+import { percurso } from '../percurso.js';
 import { paceTexto } from './visaoGeral.js';
 
 let cron = null;
@@ -23,7 +26,7 @@ let pintarCron = () => {};
 
 export function render(tela, ctx) {
   const grade = h('div', { class: 'grade' });
-  anexar(grade, cartaoDoDia(ctx), cartaoCronometro(ctx), cartaoTenis(ctx), cartaoCorridas());
+  anexar(grade, cartaoDoDia(ctx), cartaoTenis(ctx), cartaoCronometro(ctx), cartaoCorridas());
 
   anexar(tela,
     h('header', { class: 'cabecalho' },
@@ -165,6 +168,8 @@ function cartaoDoDia(ctx) {
     legenda,
     legendaSituacao: ritmo != null ? 'noAlvo' : null,
   },
+    // o traçado só aparece quando a corrida trouxe percurso
+    c?.traco ? percurso(c.traco, { altura: 190 }) : null,
     fileiraDados(
       dado('Distância', c?.distanciaKm > 0 ? nUm(c.distanciaKm, 1) : '—', {
         sufixo: 'km',
@@ -204,34 +209,79 @@ function cartaoDoDia(ctx) {
 
 function cartaoTenis(ctx) {
   const lista = kmPorTenis();
-  const alerta = lista.some((t) => t.status !== 'noAlvo');
 
-  return cartao({ titulo: 'Tênis', subtitulo: 'Quilometragem acumulada por par' },
-    h('div', { class: 'lista' }, lista.map((t) => linha(
-      [
-        h('span', { class: 'linha-titulo' }, t.nome),
-        h('span', { class: 'linha-sub' }, `${t.corridas} corridas · alerta em ${t.alertaKm} km`),
-      ],
-      etiqueta(`${nUm(t.km, 0)} km`, t.status),
-    ))),
-    alerta && h('p', { class: 'alerta' }, 'Um par está perto do limite de quilometragem.'),
+  return cartao({ titulo: 'Tênis de corrida', subtitulo: `${lista.length} ${lista.length === 1 ? 'par' : 'pares'}` },
+    lista.length
+      ? h('div', { class: 'tenis-lista' }, lista.map((t) => blocoTenis(t, ctx)))
+      : h('p', { class: 'texto-suave' }, 'Nenhum par cadastrado ainda.'),
     h('button', {
       class: 'botao largura-total',
-      onclick: () => folha('Novo tênis', (fechar) => {
-        let nome = ''; let kmInicial = 0;
-        return h('div', { class: 'pilha' },
-          campo('Nome', h('input', { type: 'text', oninput: (e) => { nome = e.target.value; } })),
-          campo('Km já rodados', entradaNumero(0, (v) => { kmInicial = v || 0; }, { step: 1 })),
-          h('button', {
-            class: 'botao primario',
-            onclick: () => {
-              if (!nome.trim()) return;
-              mudar(() => { (estado.tenis ||= []).push({ id: uid('tn'), nome: nome.trim(), kmInicial, alertaKm: 700 }); });
-              fechar(); ctx.recarregar();
-            },
-          }, 'Adicionar'));
-      }),
+      onclick: () => folhaTenis(null, ctx),
     }, icone('mais'), 'Adicionar tênis'));
+}
+
+/** Um par: foto, identidade, quilometragem e o quanto falta para trocar. */
+function blocoTenis(t, ctx) {
+  const alerta = t.alertaKm || 700;
+  const fracao = Math.max(0, Math.min(1, t.km / alerta));
+
+  const semFoto = () => h('div', { class: 'tenis-foto tenis-sem-foto' }, icone('corrida'));
+  // nome errado ou arquivo que ainda não existe não pode virar ícone quebrado
+  const foto = t.foto
+    ? h('img', {
+      class: 'tenis-foto', src: `./fotos/${t.foto}`, alt: t.nome, loading: 'lazy',
+      onerror: (e) => e.target.replaceWith(semFoto()),
+    })
+    : semFoto();
+
+  return h('button', { class: 'tenis', onclick: () => folhaTenis(t, ctx) },
+    h('div', { class: 'tenis-palco' }, foto),
+    h('div', { class: 'tenis-dados' },
+      h('span', { class: 'tenis-nome' }, t.nome),
+      t.modelo && h('span', { class: 'tenis-modelo' }, t.modelo),
+      h('div', { class: 'tenis-numeros' },
+        h('span', { class: 'tenis-km' }, nUm(t.km, 0), h('span', { class: 'tenis-km-unidade' }, 'km')),
+        etiqueta(t.restante > 0 ? `faltam ${nUm(t.restante, 0)} km` : 'hora de trocar', t.status)),
+      variaveis(h('div', { class: 'tenis-barra' },
+        h('div', { class: `tenis-barra-cheia ${classeSituacao(t.status)}` })), { fracao }),
+      h('span', { class: 'tenis-rodape' },
+        `${t.corridas} ${t.corridas === 1 ? 'corrida' : 'corridas'} · troca em ${alerta} km`)));
+}
+
+function folhaTenis(t, ctx) {
+  const novo = t
+    ? { ...t }
+    : { id: null, nome: '', modelo: '', foto: '', kmInicial: 0, alertaKm: 700 };
+
+  folha(t ? 'Editar tênis' : 'Novo tênis', (fechar) => h('div', { class: 'pilha' },
+    campo('Nome', entradaTexto(novo.nome, (v) => { novo.nome = v; })),
+    campo('Modelo', entradaTexto(novo.modelo || '', (v) => { novo.modelo = v; }),
+      'Aparece abaixo do nome, como "Adizero SL"'),
+    campo('Arquivo da foto', entradaTexto(novo.foto || '', (v) => { novo.foto = v.trim(); }),
+      'O nome do arquivo dentro da pasta fotos, como "adidas-preto.png"'),
+    h('div', { class: 'grade-2' },
+      campo('Km já rodados', entradaNumero(novo.kmInicial, (v) => { novo.kmInicial = v || 0; }, { step: 1 })),
+      campo('Trocar em (km)', entradaNumero(novo.alertaKm, (v) => { novo.alertaKm = v || 700; }, { step: 50 }))),
+    h('button', {
+      class: 'botao primario largura-total',
+      onclick: () => {
+        if (!novo.nome.trim()) { aviso('Dê um nome ao par.'); return; }
+        mudar(() => {
+          const lista = (estado.tenis ||= []);
+          if (novo.id) Object.assign(lista.find((x) => x.id === novo.id), novo);
+          else lista.push({ ...novo, id: uid('tn') });
+        });
+        fechar(); ctx.recarregar();
+      },
+    }, 'Salvar'),
+    t && h('button', {
+      class: 'botao perigo-texto largura-total',
+      onclick: async () => {
+        if (!await confirmar('Apagar tênis', `Remove "${t.nome}" da lista. As corridas continuam.`, 'Apagar', true)) return;
+        mudar(() => { estado.tenis = estado.tenis.filter((x) => x.id !== t.id); });
+        fechar(); ctx.recarregar();
+      },
+    }, 'Apagar este par')));
 }
 
 function cartaoCorridas() {
