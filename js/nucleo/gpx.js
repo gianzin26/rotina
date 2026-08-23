@@ -56,12 +56,61 @@ export function lerGPX(texto) {
 
   return {
     coordenadas,
+    tempos,
     inicio: validos[0] || null,
     fim: validos[validos.length - 1] || null,
     distanciaKm: comprimentoKm(coordenadas),
     elevacaoM: Math.round(elevacao),
     nome,
   };
+}
+
+/**
+ * Pace de cada quilômetro cheio.
+ *
+ * Percorre o trajeto somando distância; toda vez que fecha 1 km, fecha também
+ * uma parcial. O último trecho, se sobrar menos de um quilômetro, entra como
+ * parcial parcial — marcada, para não ser comparada de igual com as outras.
+ *
+ * @returns {Array<{km:number, minutos:number, pace:number, completa:boolean}>}
+ */
+export function parciaisPorKm(coordenadas, tempos) {
+  if (coordenadas.length < 2) return [];
+
+  const parciais = [];
+  let acumulado = 0;
+  let inicioDoKm = tempos[0];
+  let kmAtual = 1;
+
+  const fechar = (quando, distancia, completa) => {
+    if (!(inicioDoKm instanceof Date) || !(quando instanceof Date) || !(distancia > 0)) return;
+    const minutos = (quando - inicioDoKm) / 60000;
+    if (!(minutos > 0)) return;
+    parciais.push({
+      km: kmAtual,
+      minutos: Math.round(minutos * 100) / 100,
+      pace: Math.round((minutos / distancia) * 100) / 100,
+      completa,
+    });
+    kmAtual++;
+    inicioDoKm = quando;
+  };
+
+  for (let i = 1; i < coordenadas.length; i++) {
+    const [la1, ln1] = coordenadas[i - 1];
+    const [la2, ln2] = coordenadas[i];
+    const dLat = (la2 - la1) * 111.32;
+    const dLng = (ln2 - ln1) * 111.32 * Math.cos(((la1 + la2) / 2) * Math.PI / 180);
+    acumulado += Math.hypot(dLat, dLng);
+
+    if (acumulado >= 1) {
+      fechar(tempos[i], acumulado, true);
+      acumulado = 0;
+    }
+  }
+  // o resto do caminho, quando dá para medir
+  if (acumulado > 0.05) fechar(tempos[coordenadas.length - 1], acumulado, false);
+  return parciais;
 }
 
 const doisDigitos = (n) => String(n).padStart(2, '0');
@@ -92,6 +141,7 @@ export function corridaDoGPX(texto) {
     minutos: minutos && minutos > 0 ? minutos : null,
     elevacaoM: g.elevacaoM,
     traco: codificar(simplificar(g.coordenadas)),
+    parciais: parciaisPorKm(g.coordenadas, g.tempos),
     origem: 'gpx',
   };
 }

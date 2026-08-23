@@ -150,32 +150,42 @@ function cartaoDoDia(ctx) {
     grava({ minutos: Math.round(paceMin * km) });
   };
 
-  // o que a rotina previu, o que já foi feito, e o que falta preencher
-  const registrado = c?.distanciaKm > 0 || c?.minutos > 0;
-  const legenda = ritmo != null
-    ? `pace de ${paceTexto(ritmo)} min/km · ${duracao(c.minutos)}`
-    : registrado
-      ? 'falta a outra metade: distância e tempo'
-      : prevista
+  if (!c || (!(c.distanciaKm > 0) && !(c.minutos > 0))) {
+    return cartao({
+      titulo: 'Corrida de hoje',
+      periodo: prevista ? hhmm(prevista.inicio) : 'avulsa',
+      metrica: '—',
+      legenda: prevista
         ? `previsto para ${hhmm(prevista.inicio)} · ainda não registrada`
-        : 'sem corrida na rotina de hoje';
+        : 'sem corrida na rotina de hoje',
+    }, entradaRapida(c, grava, definirPace, ritmo));
+  }
 
   return cartao({
     titulo: 'Corrida de hoje',
-    periodo: prevista ? hhmm(prevista.inicio) : 'avulsa',
-    metrica: c?.distanciaKm > 0 ? nUm(c.distanciaKm, 1) : '—',
-    unidade: 'km',
-    legenda,
+    periodo: c.inicio || (prevista ? hhmm(prevista.inicio) : 'avulsa'),
+    // o pace é o número que o corredor procura primeiro
+    metrica: ritmo != null ? paceTexto(ritmo) : '—',
+    unidade: 'min/km',
+    legenda: [
+      c.distanciaKm > 0 ? `${nUm(c.distanciaKm, 2)} km` : null,
+      c.minutos > 0 ? duracao(c.minutos) : null,
+      c.elevacaoM ? `+${c.elevacaoM} m` : null,
+    ].filter(Boolean).join(' · ') || 'falta distância e tempo',
     legendaSituacao: ritmo != null ? 'noAlvo' : null,
   },
-    // o traçado só aparece quando a corrida trouxe percurso
-    c?.traco ? percurso(c.traco, { altura: 190 }) : null,
     fileiraDados(
-      dado('Distância', c?.distanciaKm > 0 ? nUm(c.distanciaKm, 1) : '—', {
+      dado('Distância', c.distanciaKm > 0 ? nUm(c.distanciaKm, 2) : '—', {
         sufixo: 'km',
         aoTocar: () => escolherNumero({
-          titulo: 'Distância', rotulo: 'Quilômetros', valor: c?.distanciaKm ?? '', passo: 0.1, sufixo: 'km',
+          titulo: 'Distância', rotulo: 'Quilômetros', valor: c.distanciaKm ?? '', passo: 0.1, sufixo: 'km',
           aoEscolher: (v) => grava({ distanciaKm: v }),
+        }),
+      }),
+      dado('Tempo', c.minutos > 0 ? duracao(c.minutos) : '—', {
+        aoTocar: () => escolherNumero({
+          titulo: 'Tempo', rotulo: 'Minutos', valor: c.minutos ?? '', passo: 1, sufixo: 'min',
+          aoEscolher: (v) => grava({ minutos: v }),
         }),
       }),
       dado('Pace', ritmo != null ? paceTexto(ritmo) : '—', {
@@ -185,26 +195,75 @@ function cartaoDoDia(ctx) {
           valor: ritmo != null ? Math.round(ritmo * 100) / 100 : '', passo: 0.05, sufixo: 'min/km',
           aoEscolher: definirPace,
         }),
-      }),
-      dado('Tempo', c?.minutos > 0 ? duracao(c.minutos) : '—', {
-        aoTocar: () => escolherNumero({
-          titulo: 'Tempo', rotulo: 'Minutos', valor: c?.minutos ?? '', passo: 1, sufixo: 'min',
-          aoEscolher: (v) => grava({ minutos: v }),
-        }),
       })),
-    titulo('RPE'),
-    fileiraRPE(c?.rpe ?? null, (v) => grava({ rpe: v })),
+    parciaisDaCorrida(c),
+    c.traco ? percurso(c.traco, { altura: 150 }) : null,
+    titulo('Esforço'),
+    fileiraRPE(c.rpe ?? null, (v) => grava({ rpe: v })),
     h('div', { class: 'lista' },
       linha(h('span', { class: 'linha-titulo' }, 'Tênis'),
         h('select', {
           'aria-label': 'Tênis',
           onchange: (e) => grava({ tenisId: e.target.value }),
-        }, (estado.tenis || []).map((t) => h('option', { value: t.id, selected: c?.tenisId === t.id }, t.nome))))),
-    h('button', {
-      class: `botao largura-total ${c?.teste5k ? 'ativo' : ''}`,
-      onclick: () => grava({ teste5k: !c?.teste5k, distanciaKm: c?.teste5k ? c?.distanciaKm : 5 }),
-    }, c?.teste5k && icone('check'),
-      c?.teste5k ? 'Marcada como teste de 5 km' : 'Marcar como teste de 5 km'));
+        }, (estado.tenis || []).map((t) => h('option', { value: t.id, selected: c.tenisId === t.id }, t.nome))))));
+}
+
+/** Cartão ainda vazio: só o mínimo para registrar. */
+function entradaRapida(c, grava, definirPace, ritmo) {
+  return fileiraDados(
+    dado('Distância', c?.distanciaKm > 0 ? nUm(c.distanciaKm, 2) : 'registrar', {
+      sufixo: c?.distanciaKm > 0 ? 'km' : null,
+      aoTocar: () => escolherNumero({
+        titulo: 'Distância', rotulo: 'Quilômetros', valor: c?.distanciaKm ?? '', passo: 0.1, sufixo: 'km',
+        aoEscolher: (v) => grava({ distanciaKm: v }),
+      }),
+    }),
+    dado('Tempo', c?.minutos > 0 ? duracao(c.minutos) : 'registrar', {
+      aoTocar: () => escolherNumero({
+        titulo: 'Tempo', rotulo: 'Minutos', valor: c?.minutos ?? '', passo: 1, sufixo: 'min',
+        aoEscolher: (v) => grava({ minutos: v }),
+      }),
+    }),
+    dado('Pace', ritmo != null ? paceTexto(ritmo) : '—', {
+      sufixo: ritmo != null ? 'min/km' : null,
+      aoTocar: () => definirPace && escolherNumero({
+        titulo: 'Pace', rotulo: 'Minutos por quilômetro (5,5 = 5:30)',
+        valor: '', passo: 0.05, sufixo: 'min/km', aoEscolher: definirPace,
+      }),
+    }));
+}
+
+/**
+ * Pace de cada quilômetro, em barras horizontais.
+ *
+ * A barra é proporcional ao pace, então mais longa é mais lenta — o olho pega
+ * a irregularidade sem ler número nenhum. O km mais rápido e o mais lento vêm
+ * marcados; o trecho final, que não fecha um quilômetro, fica apagado para não
+ * ser comparado de igual com os outros.
+ */
+function parciaisDaCorrida(c) {
+  const lista = (c.parciais || []).filter((p) => p.pace > 0);
+  if (lista.length < 2) return null;
+
+  const cheias = lista.filter((p) => p.completa);
+  const paces = cheias.map((p) => p.pace);
+  const melhor = Math.min(...paces);
+  const pior = Math.max(...paces);
+  const teto = pior * 1.02;
+
+  return h('div', { class: 'parciais' },
+    titulo('Pace por km'),
+    h('div', { class: 'parciais-lista' }, lista.map((p) => {
+      const situacao = !p.completa ? null
+        : p.pace === melhor ? 'noAlvo'
+          : p.pace === pior && cheias.length > 2 ? 'fora' : null;
+      return h('div', { class: `parcial ${p.completa ? '' : 'incompleta'}`.trim() },
+        h('span', { class: 'parcial-km' }, p.completa ? p.km : '·'),
+        variaveis(h('div', { class: 'parcial-trilho' },
+          h('div', { class: `parcial-barra ${situacao ? classeSituacao(situacao) : ''}`.trim() })),
+        { fracao: Math.min(1, p.pace / teto) }),
+        h('span', { class: 'parcial-pace' }, paceTexto(p.pace)));
+    })));
 }
 
 function cartaoTenis(ctx) {
