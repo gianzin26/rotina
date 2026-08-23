@@ -13,16 +13,16 @@ import {
 } from '../../nucleo/metas.js';
 import { resumo as resumoPeso, serie as seriePeso } from '../../nucleo/peso.js';
 import { estado, registroDoDia, trajeto } from '../../nucleo/store.js';
-import { corridas, historico } from '../../nucleo/treino.js';
+import { corridas } from '../../nucleo/treino.js';
 import {
-  DIAS, agoraMin, dataCurta, diaLogico, diffDias, duracao, hhmm, inicioSemana,
-  media, min, nUm, somaDias,
+  DIAS, agoraMin, dataCurta, diaLogico, diffDias, duracao, hhmm, media, min,
+  nUm, somaDias,
 } from '../../nucleo/util.js';
 import { cartao } from '../cartao.js';
 import { anexar, h, vazio } from '../dom.js';
 import { grafico } from '../grafico.js';
 import { icone } from '../icones.js';
-import { janela, periodoEmDias, periodoEmSemanas } from '../periodo.js';
+import { janela, periodoEmDias } from '../periodo.js';
 
 /**
  * Rótulos de data espalhados por igual, sempre incluindo o primeiro e o último.
@@ -67,7 +67,6 @@ export function render(tela, ctx) {
       cartaoAderencia(dia, ctx),
       cartaoCreatina(dia, ctx),
       cartaoDeslocamento(),
-      cartaoVolume(ctx),
       cartaoCorrida(ctx)));
 }
 
@@ -321,44 +320,6 @@ function cartaoDeslocamento() {
         h('span', { class: 'barra-h-valor' }, duracao(c.medianaDuracao))),
       h('div', { class: 'barra-h-trilho' },
         h('div', { class: 'barra-h-cheia', vars: { fracao: c.medianaDuracao / maior } }))))));
-}
-
-/* ---------------- volume de treino ---------------- */
-
-function cartaoVolume(ctx) {
-  const dia = diaLogico();
-  const semanas = janela('volume');
-  const pontos = [];
-  const rotulos = [];
-  for (let i = semanas - 1; i >= 0; i--) {
-    const ini = somaDias(inicioSemana(dia), -i * 7);
-    const fim = somaDias(ini, 6);
-    const volume = historico()
-      .filter((t) => t.data >= ini && t.data <= fim)
-      .reduce((a, t) => a + (t.exercicios || []).reduce((b, e) => b + (e.carga || 0) * (e.reps || 0), 0), 0);
-    const x = semanas - 1 - i;
-    pontos.push({ x, y: volume });
-    // um rótulo a cada N semanas, para 26 semanas não virarem 13 datas coladas
-    if (i % Math.max(1, Math.round(semanas / 5)) === 0) rotulos.push({ x, texto: dataCurta(ini) });
-  }
-  const desde = somaDias(dia, -6);
-  const ultimos7 = historico()
-    .filter((t) => t.data >= desde && t.data <= dia)
-    .reduce((a, t) => a + (t.exercicios || []).reduce((b, e) => b + (e.carga || 0) * (e.reps || 0), 0), 0);
-
-  return cartao({
-    titulo: 'Volume de treino',
-    // agregado por semana, então o seletor é em semanas, não em dias
-    periodo: periodoEmSemanas('volume', ctx),
-    metrica: nUm(ultimos7 / 1000, 1),
-    unidade: 't',
-    legenda: ultimos7 ? 'Carga levantada nos últimos 7 dias' : 'Sem treino nos últimos 7 dias',
-  },
-    grafico({
-      altura: 120, descricao: 'volume de treino por semana', base0: true, yTicks: 2,
-      formatoY: (y) => `${nUm(y / 1000, 1)} t`, rotulosX: rotulos,
-      series: [{ tipo: 'barras', serie: 'serie-principal', pontos }],
-    }));
 }
 
 /* ---------------- corrida ---------------- */

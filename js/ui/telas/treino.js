@@ -1,282 +1,41 @@
-// ui/telas/treino.js — sessão de força do dia e a parte de corrida.
+// ui/telas/treino.js — a corrida do dia, o cronômetro de intervalos e o histórico.
+//
+// Musculação saiu daqui a pedido: a tela é só corrida. Os treinos de força já
+// registrados continuam guardados em `registros.treino` e no backup — o que
+// mudou foi a tela, não os dados.
 
-import { iniciarCorrida, iniciarTreino } from '../../nucleo/acoes.js';
+import { iniciarCorrida } from '../../nucleo/acoes.js';
 import { ocorrencias } from '../../nucleo/agenda.js';
 import { criarCronometro, mmss } from '../../nucleo/cronometro.js';
-import { estado, mudar, reg, sessao } from '../../nucleo/store.js';
-import {
-  corridas, deload, exerciciosConhecidos, historico, kmPorTenis,
-  marcarDeloadFeito, progressao, sugestaoCarga, testes5k,
-} from '../../nucleo/treino.js';
-import { agoraMin, dataCurta, diaLogico, duracao, hhmm, nUm, uid } from '../../nucleo/util.js';
+import { estado, mudar } from '../../nucleo/store.js';
+import { corridas, kmPorTenis, testes5k } from '../../nucleo/treino.js';
+import { agoraMin, dataCurta, diaLogico, duracao, hhmm, nUm } from '../../nucleo/util.js';
 import { avisarFase, avisarInicio, prepararAudio, segurarTela, soltarTela } from '../alarme.js';
 import { cartao, dado, etiqueta, fileiraDados, linha, titulo } from '../cartao.js';
-import { anexar, h, vazio } from '../dom.js';
-import { aviso, campo, confirmar, entradaNumero, escolherNumero, fileiraRPE, folha, segmentos } from '../folha.js';
-import { grafico } from '../grafico.js';
-import { paceTexto } from './visaoGeral.js';
+import { anexar, h } from '../dom.js';
+import { aviso, campo, entradaNumero, escolherNumero, fileiraRPE, folha } from '../folha.js';
 import { icone } from '../icones.js';
-
-let aba = 'forca';
-let exercicioGrafico = null;
-let sessaoEscolhida = null;
+import { paceTexto } from './visaoGeral.js';
 
 let cron = null;
 let cronConfig = null;
 let pintarCron = () => {};
 
 export function render(tela, ctx) {
+  const grade = h('div', { class: 'grade' });
+  anexar(grade, cartaoDoDia(ctx), cartaoCronometro(ctx), cartaoTenis(ctx), cartaoCorridas());
+
   anexar(tela,
     h('header', { class: 'cabecalho' },
       h('div', {},
         h('h1', {}, 'Treino'),
-        h('p', { class: 'cabecalho-sub' }, aba === 'forca' ? 'Força' : 'Corrida')),
-      h('div', { class: 'cabecalho-acoes' },
-        segmentos([{ id: 'forca', rotulo: 'Força' }, { id: 'corrida', rotulo: 'Corrida' }], aba,
-          (id) => { aba = id; ctx.recarregar(); }))));
-
-  const grade = h('div', { class: 'grade' });
-  tela.append(grade);
-  if (aba === 'forca') telaForca(grade, ctx);
-  else telaCorrida(grade, ctx);
+        h('p', { class: 'cabecalho-sub' }, 'Corrida'))),
+    grade);
 }
 
-/* ================= força ================= */
-
-function telaForca(grade, ctx) {
-  const dia = diaLogico();
-  const doDia = ocorrencias(dia).filter((o) => o.tipo === 'treino');
-  const alvo = doDia.find((o) => o.sessaoId === sessaoEscolhida) || doDia[0] || null;
-  const s = sessao(alvo?.sessaoId || sessaoEscolhida);
-  const registro = alvo?.registro
-    || reg('treino').find((t) => t.data === dia && t.sessaoId === s?.id)
-    || null;
-
-  anexar(grade,
-    doDia.length > 1 && h('div', { class: 'cartao total' },
-      segmentos(doDia.map((o) => ({ id: o.sessaoId, rotulo: o.titulo })),
-        alvo?.sessaoId, (id) => { sessaoEscolhida = id; ctx.recarregar(); })),
-    s ? cartaoSessao(s, registro, alvo, dia, ctx)
-      : cartao({ titulo: 'Sem sessão hoje', subtitulo: 'A rotina não prevê treino de força' },
-        vazio('Você pode registrar uma sessão avulsa mesmo assim.'),
-        h('button', { class: 'botao largura-total', onclick: () => escolherSessaoAvulsa(dia, ctx) },
-          icone('mais'), 'Registrar sessão avulsa')),
-    cartaoDeload(ctx),
-    cartaoProgressao(),
-    cartaoHistorico());
-}
-
-function cartaoDeload(ctx) {
-  const d = deload();
-  const situacao = d.atrasado ? 'fora' : d.devido ? 'deriva' : 'noAlvo';
-  return cartao({
-    titulo: 'Bloco de treino',
-    subtitulo: `Deload a cada ${d.janela[0]}–${d.janela[1]} semanas`,
-    metrica: String(d.semana || '—'),
-    unidade: d.semana === 1 ? 'semana' : 'semanas',
-    legenda: d.devido ? 'hora de aliviar a carga' : `faltam ${d.faltam} para o deload`,
-    delta: { texto: d.devido ? 'devido' : 'em dia', situacao },
-  },
-    h('button', {
-      class: 'botao largura-total',
-      onclick: async () => {
-        if (await confirmar('Deload', 'Zera a contagem e começa um bloco novo a partir de hoje.', 'Marcar deload')) {
-          marcarDeloadFeito(); aviso('Bloco reiniciado.'); ctx.recarregar();
-        }
-      },
-    }, icone('zerar'), 'Marcar deload feito'));
-}
-
-function cartaoSessao(s, registro, ocorrencia, dia, ctx) {
-  const corpo = [];
-  const feitos = registro ? (registro.exercicios || []).length : 0;
-
-  if (!registro) {
-    corpo.push(h('button', {
-      class: 'botao primario largura-total',
-      onclick: () => {
-        iniciarTreino(dia, ocorrencia || { id: null, sessaoId: s.id }, agoraMin());
-        aviso('Sessão iniciada.');
-        ctx.recarregar();
-      },
-    }, icone('iniciar'), 'Iniciar sessão'));
-  }
-
-  for (const ex of s.exercicios) corpo.push(linhaExercicio(ex, registro, s.id, ctx));
-
-  if (registro) {
-    corpo.push(
-      titulo('RPE da sessão'),
-      fileiraRPE(registro.rpe, (v) => { mudar(() => { registro.rpe = v; }); ctx.recarregar(); }),
-      h('button', {
-        class: `botao largura-total ${registro.fim ? 'ativo' : 'primario'}`,
-        onclick: () => {
-          mudar(() => { registro.fim = registro.fim ? null : hhmm(agoraMin()); });
-          if (registro.fim) aviso('Sessão encerrada.');
-          ctx.recarregar();
-        },
-      }, registro.fim && icone('check'),
-        registro.fim ? `Encerrada às ${registro.fim} — reabrir` : 'Encerrar sessão'));
-  }
-
-  return cartao({
-    titulo: s.nome,
-    subtitulo: registro?.inicio ? `Iniciada às ${registro.inicio}` : 'Sessão do dia',
-    periodo: `${s.exercicios.length} exercícios`,
-    metrica: String(feitos),
-    unidade: `/ ${s.exercicios.length}`,
-    legenda: 'exercícios registrados',
-  }, ...corpo);
-}
-
-function linhaExercicio(ex, registro, sessaoId, ctx) {
-  const feito = registro ? (registro.exercicios || []).find((x) => x.nome === ex.nome) : null;
-  const ref = sugestaoCarga(sessaoId, ex.nome, registro?.data || null);
-  const carga = feito?.carga ?? ref.carga;
-  const reps = feito?.reps ?? ref.reps ?? ex.repsAlvo;
-
-  const gravar = (campos) => {
-    if (!registro) { aviso('Inicie a sessão primeiro.'); return; }
-    mudar(() => {
-      const lista = (registro.exercicios ||= []);
-      let e = lista.find((x) => x.nome === ex.nome);
-      if (!e) { e = { nome: ex.nome, carga: carga ?? null, reps: reps ?? null }; lista.push(e); }
-      Object.assign(e, campos);
-    });
-    ctx.recarregar();
-  };
-
-  const passo = (valorAtual, delta) => Math.max(0, Math.round(((valorAtual ?? 0) + delta) * 100) / 100);
-
-  return h('div', { class: `exercicio ${feito ? 'registrado' : ''}` },
-    h('div', { class: 'exercicio-topo' },
-      h('span', { class: 'exercicio-nome' }, ex.nome),
-      h('span', { class: 'linha-sub' },
-        ref.data
-          ? `última: ${ref.carga != null ? `${nUm(ref.carga, ref.carga % 1 ? 1 : 0)} kg × ${ref.reps ?? '—'}` : `${ref.reps ?? '—'} reps`} em ${dataCurta(ref.data)}`
-          : `alvo: ${ref.carga != null ? `${nUm(ref.carga, 0)} kg × ${ex.repsAlvo}` : `${ex.repsAlvo} reps`}`)),
-    h('div', { class: 'exercicio-controles' },
-      contador(carga, 'kg', 2.5, (v) => gravar({ carga: v }), passo,
-        () => escolherNumero({
-          titulo: ex.nome, rotulo: 'Carga', valor: carga, passo: 0.5, sufixo: 'kg',
-          aoEscolher: (v) => gravar({ carga: v }),
-        })),
-      contador(reps, 'reps', 1, (v) => gravar({ reps: v }), passo,
-        () => escolherNumero({
-          titulo: ex.nome, rotulo: 'Repetições', valor: reps, passo: 1, sufixo: 'reps',
-          aoEscolher: (v) => gravar({ reps: v }),
-        }))));
-}
-
-function contador(valor, sufixo, delta, aoMudar, passo, aoTocarValor) {
-  return h('div', { class: 'contador' },
-    h('button', {
-      class: 'contador-btn', 'aria-label': `menos ${delta} ${sufixo}`,
-      onclick: () => aoMudar(passo(valor, -delta)),
-    }, icone('menos')),
-    h('button', { class: 'contador-valor', onclick: aoTocarValor },
-      valor != null ? nUm(valor, valor % 1 ? 1 : 0) : '—',
-      h('span', { class: 'contador-sufixo' }, sufixo)),
-    h('button', {
-      class: 'contador-btn', 'aria-label': `mais ${delta} ${sufixo}`,
-      onclick: () => aoMudar(passo(valor, delta)),
-    }, icone('mais')));
-}
-
-function escolherSessaoAvulsa(dia, ctx) {
-  folha('Qual sessão?', (fechar) => h('div', { class: 'pilha' },
-    estado.sessoesTreino.map((s) => h('button', {
-      class: 'botao largura-total',
-      onclick: () => {
-        iniciarTreino(dia, { id: null, sessaoId: s.id }, agoraMin());
-        sessaoEscolhida = s.id;
-        fechar(); ctx.recarregar();
-      },
-    }, s.nome))));
-}
-
-function cartaoProgressao() {
-  const nomes = exerciciosConhecidos();
-  if (!nomes.length) {
-    return cartao({ titulo: 'Progressão', subtitulo: 'Carga por sessão' }, vazio('Nenhum exercício cadastrado.'));
-  }
-  // começa por algum que já tenha carga registrada, senão o gráfico abre vazio
-  exercicioGrafico = nomes.includes(exercicioGrafico)
-    ? exercicioGrafico
-    : nomes.find((n) => progressao(n).length) || nomes[0];
-  const dados = progressao(exercicioGrafico);
-
-  const seletor = h('select', {
-    'aria-label': 'Exercício',
-    onchange: (e) => {
-      exercicioGrafico = e.target.value;
-      const pai = e.target.closest('.cartao');
-      pai.replaceWith(cartaoProgressao());
-    },
-  }, nomes.map((n) => h('option', { value: n, selected: n === exercicioGrafico }, n)));
-
-  const passo = Math.max(1, Math.ceil(dados.length / 4));
-  const primeiro = dados[0]?.carga;
-  const ultimo = dados[dados.length - 1]?.carga;
-  const ganho = primeiro != null && ultimo != null ? ultimo - primeiro : null;
-
-  return cartao({
-    titulo: 'Progressão',
-    subtitulo: exercicioGrafico,
-    periodo: `${dados.length} ${dados.length === 1 ? 'sessão' : 'sessões'}`,
-    metrica: ultimo != null ? nUm(ultimo, ultimo % 1 ? 1 : 0) : '—',
-    unidade: 'kg',
-    legenda: 'carga da última sessão',
-    delta: ganho != null && ganho !== 0 && {
-      texto: `${ganho > 0 ? '+' : '−'}${nUm(Math.abs(ganho), Math.abs(ganho) % 1 ? 1 : 0)} kg`,
-      situacao: ganho > 0 ? 'noAlvo' : 'fora',
-      sentido: ganho > 0 ? 'subiu' : 'desceu',
-    },
-  },
-    seletor,
-    grafico({
-      altura: 180, descricao: `carga de ${exercicioGrafico}`,
-      formatoY: (y) => `${Math.round(y)}`,
-      rotulosX: dados.map((d, i) => ({ i, d })).filter(({ i }) => i % passo === 0)
-        .map(({ i, d }) => ({ x: i, texto: dataCurta(d.data) })),
-      series: [{ tipo: 'linha', serie: 'serie-treino', marcadores: true, pontos: dados.map((d, x) => ({ x, y: d.carga })) }],
-    }));
-}
-
-function cartaoHistorico() {
-  const lista = historico().slice(0, 12);
-  if (!lista.length) {
-    return cartao({ titulo: 'Histórico', subtitulo: 'Sessões concluídas' }, vazio('Nenhuma sessão registrada.'));
-  }
-  return cartao({ titulo: 'Histórico', subtitulo: 'Sessões concluídas', periodo: `${lista.length} recentes` },
-    h('div', { class: 'lista' }, lista.map((t) => linha(
-      [
-        h('span', { class: 'linha-titulo' }, sessao(t.sessaoId)?.nome || 'Sessão'),
-        h('span', { class: 'linha-sub' },
-          `${dataCurta(t.data)} · ${(t.exercicios || []).length} exercícios${t.rpe ? ` · RPE ${t.rpe}` : ''}`),
-      ],
-      icone('chevronDireita'),
-      { aoTocar: () => detalheSessao(t) },
-    ))));
-}
-
-function detalheSessao(t) {
-  folha(`${sessao(t.sessaoId)?.nome || 'Sessão'} · ${dataCurta(t.data)}`, () => h('div', { class: 'pilha' },
-    (t.exercicios || []).length
-      ? h('div', { class: 'lista' }, t.exercicios.map((e) => linha(
-        h('span', { class: 'linha-titulo' }, e.nome),
-        h('span', { class: 'dado-valor' },
-          e.carga != null ? nUm(e.carga, e.carga % 1 ? 1 : 0) : '—',
-          h('span', { class: 'dado-sufixo' }, `kg × ${e.reps ?? '—'}`)),
-      )))
-      : vazio('Sem cargas registradas.'),
-    t.rpe && h('p', { class: 'texto-suave' }, `RPE ${t.rpe}`)));
-}
-
-/* ================= corrida ================= */
-
-function telaCorrida(grade, ctx) {
-  anexar(grade, cartaoCronometro(ctx), cartaoRegistroCorrida(ctx), cartaoTenis(ctx), cartaoCorridas());
+/** A corrida prevista para hoje na rotina, se houver. */
+function previstaHoje(dia) {
+  return ocorrencias(dia).filter((o) => o.tipo === 'corrida').sort((a, b) => a.inicio - b.inicio)[0] || null;
 }
 
 function cartaoCronometro(ctx) {
@@ -366,9 +125,10 @@ function registrarCorridaConcluida(minutos, ctx) {
   ctx.recarregar();
 }
 
-function cartaoRegistroCorrida(ctx) {
+function cartaoDoDia(ctx) {
   const dia = diaLogico();
   const c = corridas().find((x) => x.data === dia) || null;
+  const prevista = previstaHoje(dia);
 
   const garantir = () => c || iniciarCorrida(dia, null, agoraMin());
   const grava = (campos) => {
@@ -387,12 +147,23 @@ function cartaoRegistroCorrida(ctx) {
     grava({ minutos: Math.round(paceMin * km) });
   };
 
+  // o que a rotina previu, o que já foi feito, e o que falta preencher
+  const registrado = c?.distanciaKm > 0 || c?.minutos > 0;
+  const legenda = ritmo != null
+    ? `pace de ${paceTexto(ritmo)} min/km · ${duracao(c.minutos)}`
+    : registrado
+      ? 'falta a outra metade: distância e tempo'
+      : prevista
+        ? `previsto para ${hhmm(prevista.inicio)} · ainda não registrada`
+        : 'sem corrida na rotina de hoje';
+
   return cartao({
     titulo: 'Corrida de hoje',
-    subtitulo: 'Distância e pace alimentam o gráfico da Visão geral',
+    periodo: prevista ? hhmm(prevista.inicio) : 'avulsa',
     metrica: c?.distanciaKm > 0 ? nUm(c.distanciaKm, 1) : '—',
     unidade: 'km',
-    legenda: ritmo != null ? `pace de ${paceTexto(ritmo)} min/km` : 'registre distância e tempo',
+    legenda,
+    legendaSituacao: ritmo != null ? 'noAlvo' : null,
   },
     fileiraDados(
       dado('Distância', c?.distanciaKm > 0 ? nUm(c.distanciaKm, 1) : '—', {

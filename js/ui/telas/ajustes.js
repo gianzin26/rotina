@@ -11,12 +11,12 @@ import {
 import { resumoSemana } from '../../nucleo/resumo.js';
 import { definirTema, tema as temaAtual } from '../../nucleo/tema.js';
 import {
-  TOLERANCIAS_PADRAO, estado, mudar, sessao, substituirEstado, trajeto, zerar,
+  TOLERANCIAS_PADRAO, estado, mudar, substituirEstado, trajeto, zerar,
 } from '../../nucleo/store.js';
 import { DIAS, diaLogico, inicioSemana, uid } from '../../nucleo/util.js';
 import { baixarJSON, copiar, lerArquivo } from '../arquivos.js';
 import { etiqueta, linha } from '../cartao.js';
-import { anexar, h, vazio } from '../dom.js';
+import { anexar, h } from '../dom.js';
 import {
   aviso, campo, confirmar, entradaHora, entradaNumero, entradaTexto, fecharFolha,
   folha, segmentos,
@@ -44,7 +44,6 @@ export function render(tela, ctx) {
       grupo('Rotina', [
         item('Horários da semana', `${estado.rotina.length} atividades`, () => folhaRotina(ctx)),
         item('Trajetos', `${estado.trajetos.length} rotas`, () => folhaTrajetos(ctx)),
-        item('Sessões de treino', `${estado.sessoesTreino.length} sessões`, () => folhaSessoes(ctx)),
       ]),
       grupo('Metas', [
         item('Peso alvo', `${estado.perfil.pesoAlvo ?? '—'} kg`, () => folhaMetas(ctx)),
@@ -320,21 +319,6 @@ function folhaTrajetos(ctx) {
     }, icone('mais'), 'Adicionar trajeto')));
 }
 
-function folhaSessoes(ctx) {
-  folha('Sessões de treino', () => h('div', { class: 'pilha' },
-    h('div', { class: 'lista' }, estado.sessoesTreino.map((s) => linha(
-      [
-        h('span', { class: 'linha-titulo' }, s.nome),
-        h('span', { class: 'linha-sub' }, `${s.exercicios.length} exercícios`),
-      ],
-      icone('chevronDireita'),
-      { aoTocar: () => editarSessao(s, ctx) },
-    ))),
-    h('button', {
-      class: 'botao largura-total',
-      onclick: () => editarSessao({ id: null, nome: '', exercicios: [] }, ctx),
-    }, icone('mais'), 'Adicionar sessão')));
-}
 
 /* ---------------- editores ---------------- */
 
@@ -371,10 +355,6 @@ function editarRotina(item, ctx) {
           onchange: (e) => { novo.trajetoId = e.target.value || null; },
         }, h('option', { value: '' }, '—'),
           estado.trajetos.map((t) => h('option', { value: t.id, selected: t.id === novo.trajetoId }, `${t.origem} → ${t.destino}`)))),
-        novo.tipo === 'treino' && campo('Sessão', h('select', {
-          onchange: (e) => { novo.sessaoId = e.target.value || null; },
-        }, h('option', { value: '' }, '—'),
-          estado.sessoesTreino.map((s) => h('option', { value: s.id, selected: s.id === novo.sessaoId }, s.nome)))),
         campo('Local', entradaTexto(novo.local, (v) => { novo.local = v; })),
         h('button', {
           class: 'botao primario',
@@ -430,54 +410,6 @@ function editarTrajeto(t, ctx) {
     }, 'Apagar trajeto')));
 }
 
-function editarSessao(s, ctx) {
-  const novo = { ...s, exercicios: s.exercicios.map((e) => ({ ...e })) };
-  folha(s.id ? 'Editar sessão' : 'Nova sessão', (fechar) => {
-    const corpo = h('div', { class: 'pilha' });
-
-    function redesenhar() {
-      corpo.replaceChildren(
-        campo('Nome da sessão', entradaTexto(novo.nome, (v) => { novo.nome = v; })),
-        h('h3', { class: 'sub' }, 'Exercícios'),
-        novo.exercicios.length ? h('div', { class: 'pilha-fina' }, novo.exercicios.map((e, i) => h('div', { class: 'ex-editor' },
-          entradaTexto(e.nome, (v) => { e.nome = v; }, { placeholder: 'Nome do exercício' }),
-          h('div', { class: 'grade-3' },
-            campo('Séries', entradaNumero(e.series, (v) => { e.series = v; }, { step: 1, class: 'mini' })),
-            campo('Reps', entradaNumero(e.repsAlvo, (v) => { e.repsAlvo = v; }, { step: 1, class: 'mini' })),
-            campo('Carga inicial', entradaNumero(e.cargaInicial, (v) => { e.cargaInicial = v; }, { step: 2.5, class: 'mini' }))),
-          h('button', {
-            class: 'botao perigo-texto mini-botao',
-            onclick: () => { novo.exercicios.splice(i, 1); redesenhar(); },
-          }, 'Remover')))) : vazio('Nenhum exercício.'),
-        h('button', {
-          class: 'botao',
-          onclick: () => { novo.exercicios.push({ nome: '', series: 3, repsAlvo: 10, cargaInicial: null }); redesenhar(); },
-        }, 'Adicionar exercício'),
-        h('button', {
-          class: 'botao primario',
-          onclick: () => {
-            if (!novo.nome.trim()) { aviso('Dê um nome à sessão.'); return; }
-            novo.exercicios = novo.exercicios.filter((e) => e.nome.trim());
-            mudar(() => {
-              if (s.id) Object.assign(sessao(s.id), novo);
-              else estado.sessoesTreino.push({ ...novo, id: uid('ss') });
-            });
-            fechar(); ctx.recarregar();
-          },
-        }, 'Salvar sessão'),
-        s.id && h('button', {
-          class: 'botao perigo-texto',
-          onclick: async () => {
-            if (!await confirmar('Apagar sessão', 'O histórico de treinos continua guardado.', 'Apagar', true)) return;
-            mudar(() => { estado.sessoesTreino = estado.sessoesTreino.filter((x) => x.id !== s.id); });
-            fechar(); ctx.recarregar();
-          },
-        }, 'Apagar sessão'));
-    }
-    redesenhar();
-    return corpo;
-  });
-}
 
 function mostrarResumo() {
   const texto = resumoSemana(inicioSemana(diaLogico()));
