@@ -107,7 +107,10 @@ export function estadoPadrao() {
     rotina: structuredClone(ROTINA),
     trajetos: structuredClone(TRAJETOS),
     sessoesTreino: structuredClone(SESSOES),
-    tenis: [{ id: 'tn-1', nome: 'Tênis principal', kmInicial: 0, alertaKm: 700 }],
+    tenis: [{
+      id: 'tn-1', nome: 'Adidas preto', modelo: 'Racer TR23',
+      foto: 'adidas-racer.png', kmInicial: 0, alertaKm: 700,
+    }],
     registros: {
       sono: [], deslocamento: [], treino: [], corrida: [],
       peso: [], creatina: [], notas: [], proteina: [],

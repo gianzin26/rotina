@@ -10,3 +10,6 @@ _site/
 # cache local do wrangler: contém id de conta e e-mail
 .wrangler/
 node_modules/
+
+# GPX tem o trajeto real; nunca entra no repositório público
+*.gpx

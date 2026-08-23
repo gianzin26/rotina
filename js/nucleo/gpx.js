@@ -51,13 +51,7 @@ export function lerGPX(texto) {
   const validos = tempos.filter((t) => t instanceof Date && !Number.isNaN(t.getTime()));
   const nome = /<trk>[\s\S]*?<name>([^<]+)<\/name>/.exec(texto)?.[1]?.trim() || null;
 
-  // só o que sobe conta como ganho, e um degrau mínimo evita somar o ruído do GPS
-  let elevacao = 0;
-  for (let i = 1; i < altitudes.length; i++) {
-    if (altitudes[i] == null || altitudes[i - 1] == null) continue;
-    const d = altitudes[i] - altitudes[i - 1];
-    if (d > 0.5) elevacao += d;
-  }
+  const elevacao = ganhoDeElevacao(altitudes);
 
   const comAltitude = altitudes.filter((a) => a != null);
   const media = (lista) => {
@@ -71,7 +65,7 @@ export function lerGPX(texto) {
     inicio: validos[0] || null,
     fim: validos[validos.length - 1] || null,
     distanciaKm: comprimentoKm(coordenadas),
-    elevacaoM: Math.round(elevacao),
+    elevacaoM: elevacao,
     elevacaoMaxM: comAltitude.length ? Math.round(Math.max(...comAltitude)) : null,
     elevacaoMinM: comAltitude.length ? Math.round(Math.min(...comAltitude)) : null,
     movimentoMin: tempoEmMovimento(coordenadas, tempos),
@@ -80,6 +74,30 @@ export function lerGPX(texto) {
     cadencia: media(cadencias),
     nome,
   };
+}
+
+/**
+ * Ganho de elevação acumulado.
+ *
+ * Somar passo a passo não funciona: o relógio grava a cada segundo com 0,1 m
+ * de resolução, então subida real e tremor do GPS têm o mesmo tamanho. A
+ * primeira versão filtrava passos abaixo de meio metro e devolvia zero numa
+ * corrida que subiu 20 m.
+ *
+ * A conta certa é por histerese: guarda o ponto mais baixo recente e só conta
+ * quando a altitude passa dele por mais que o limiar. Descendo, o piso desce
+ * junto. Calibrado contra uma corrida real de 20 m medidos: com 2 m dá 18,9.
+ */
+export function ganhoDeElevacao(altitudes, limiar = 2) {
+  const validas = altitudes.filter((a) => a != null);
+  if (validas.length < 2) return 0;
+  let ganho = 0;
+  let piso = validas[0];
+  for (const a of validas) {
+    if (a > piso + limiar) { ganho += a - piso; piso = a; }
+    else if (a < piso) piso = a;
+  }
+  return Math.round(ganho);
 }
 
 /**
