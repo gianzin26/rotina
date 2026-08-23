@@ -80,3 +80,30 @@ export function titulo(texto, icone2) {
 export function etiqueta(texto, situacao) {
   return h('span', { class: `etiqueta ${situacao ? classeSituacao(situacao) : ''}`.trim() }, texto);
 }
+
+/**
+ * Grade de métricas em duas colunas: rótulo pequeno em cima, número embaixo.
+ * É a anatomia que os apps de corrida usam porque cabe muito dado sem virar
+ * tabela — o olho varre os rótulos e para no que interessa.
+ *
+ * @param {...({rotulo:string, valor:string, sufixo?:string, nota?:string}|false|null)} itens
+ */
+export function metricas(...itens) {
+  const bons = itens.filter(Boolean);
+  if (!bons.length) return null;
+  return h('div', { class: 'metricas' }, bons.map((m) => h('div', { class: 'metrica-item' },
+    h('span', { class: 'metrica-rotulo' }, m.rotulo),
+    h('span', { class: 'metrica-valor' },
+      m.valor,
+      m.sufixo && h('span', { class: 'metrica-sufixo' }, m.sufixo)),
+    m.nota && h('span', { class: 'metrica-nota' }, m.nota))));
+}
+
+/** Faixa de destaque no topo do cartão, como a medalha de recorde. */
+export function destaque(texto, detalhe, situacao) {
+  return h('div', { class: `destaque ${situacao ? classeSituacao(situacao) : ''}`.trim() },
+    icone('sequencia'),
+    h('div', { class: 'destaque-texto' },
+      h('span', { class: 'destaque-titulo' }, texto),
+      detalhe && h('span', { class: 'destaque-detalhe' }, detalhe)));
+}

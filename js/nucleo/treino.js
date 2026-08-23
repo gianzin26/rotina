@@ -95,3 +95,44 @@ export function corridas() {
 export function testes5k() {
   return corridas().filter((c) => c.teste5k && typeof c.minutos === 'number');
 }
+
+/**
+ * Estimativa de calorias da corrida.
+ *
+ * Não vem do GPX: é conta. Correr custa perto de 1 kcal por quilo por
+ * quilômetro, quase independente do ritmo — o corpo paga pelo peso que
+ * carregou pela distância que percorreu. É estimativa, e a tela diz isso.
+ *
+ * @returns {number|null} null quando não há peso registrado
+ */
+export function caloriasEstimadas(distanciaKm, pesoKg) {
+  if (!(distanciaKm > 0) || !(pesoKg > 0)) return null;
+  return Math.round(distanciaKm * pesoKg * 1.036);
+}
+
+/**
+ * Em que posição esta corrida entra entre as suas melhores da mesma distância.
+ *
+ * Compara com corridas de distância parecida (5% de folga), porque 5,10 km e
+ * 5,03 km são a mesma volta. Devolve a posição e quanto separa da anterior.
+ *
+ * @returns {{posicao:number, total:number, diferencaMin:number|null}|null}
+ */
+export function posicaoNaDistancia(corrida, todas = corridas()) {
+  if (!(corrida?.distanciaKm > 0) || !(corrida?.minutos > 0)) return null;
+
+  const parecidas = todas.filter((c) => c.distanciaKm > 0 && c.minutos > 0
+    && Math.abs(c.distanciaKm - corrida.distanciaKm) / corrida.distanciaKm <= 0.05);
+  if (parecidas.length < 2) return null;
+
+  const ordenadas = [...parecidas].sort((a, b) => a.minutos - b.minutos);
+  const posicao = ordenadas.findIndex((c) => c.id === corrida.id) + 1;
+  if (posicao < 1) return null;
+
+  const acima = ordenadas[posicao - 2];
+  return {
+    posicao,
+    total: ordenadas.length,
+    diferencaMin: acima ? Math.round((corrida.minutos - acima.minutos) * 100) / 100 : null,
+  };
+}

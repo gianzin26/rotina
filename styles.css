@@ -98,6 +98,7 @@
 
   --texto-cron: 44px;      /* Display */
   --texto-metrica: 40px;   /* Display — número grande do cartão */
+  --texto-metrica-media: 24px; /* Display — número da grade de métricas */
   --texto-titulo: 32px;    /* Display — título de tela */
   --texto-metrica-p: 24px; /* Display — número do cartão pequeno */
   --texto-acao: 17px;      /* Text */
@@ -1714,6 +1715,60 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 
 /* sem número grande a legenda encosta no cabeçalho: precisa do próprio respiro */
 .cartao-metrica.so-legenda { margin-top: var(--esp-1); }
+
+/* ---------------- grade de métricas ---------------- */
+
+.metricas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--esp-4) var(--esp-3);
+  margin-top: var(--esp-4);
+}
+
+.metrica-item { display: flex; flex-direction: column; gap: var(--esp-0); min-width: 0; }
+
+.metrica-rotulo { font-size: var(--texto-legenda); color: var(--text-soft); }
+
+.metrica-valor {
+  font-family: var(--font-display);
+  font-size: var(--texto-metrica-media);
+  font-weight: var(--peso-forte);
+  letter-spacing: var(--tracking-display);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.metrica-sufixo {
+  font-family: var(--font-text);
+  font-size: var(--texto-legenda);
+  font-weight: var(--peso-normal);
+  color: var(--text-soft);
+  margin-left: 3px;
+  letter-spacing: 0;
+}
+
+.metrica-nota { font-size: var(--texto-eixo); color: var(--text-soft); }
+
+/* ---------------- destaque do cartão ---------------- */
+
+.destaque {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-3);
+  margin-top: var(--esp-3);
+  padding: var(--esp-3);
+  border-radius: var(--raio-g);
+  background: var(--tinta-neutra);
+}
+
+.destaque .icone { width: var(--esp-6); height: var(--esp-6); flex: none; color: var(--text-soft); }
+.destaque.verde { background: var(--tinta-verde); }
+.destaque.verde .icone { color: var(--verde-texto); }
+
+.destaque-texto { display: flex; flex-direction: column; gap: var(--esp-0); min-width: 0; }
+.destaque-titulo { font-weight: var(--peso-semi); font-size: var(--texto-corpo); }
+.destaque-detalhe { font-size: var(--texto-legenda); color: var(--text-soft); }
+.destaque.verde .destaque-detalhe { color: var(--verde-texto); }
 
 /* ---------------- pace por km ---------------- */
 

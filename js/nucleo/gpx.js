@@ -23,6 +23,8 @@ export function lerGPX(texto) {
   const coordenadas = [];
   const tempos = [];
   const altitudes = [];
+  const batimentos = [];
+  const cadencias = [];
 
   // cada <trkpt> traz lat e lon nos atributos, e ele/time como filhos
   const ponto = /<trkpt\b[^>]*?\blat="([^"]+)"[^>]*?\blon="([^"]+)"[^>]*>([\s\S]*?)<\/trkpt>|<trkpt\b[^>]*?\blat="([^"]+)"[^>]*?\blon="([^"]+)"[^>]*\/>/g;
@@ -37,6 +39,9 @@ export function lerGPX(texto) {
       const e = /<ele>([^<]+)<\/ele>/.exec(dentro);
       tempos.push(t ? new Date(t[1]) : null);
       altitudes.push(e ? numero(e[1]) : null);
+      // relógios costumam gravar isto nas extensões, com prefixos variados
+      batimentos.push(numero(/<(?:\w+:)?hr>([^<]+)</.exec(dentro)?.[1]));
+      cadencias.push(numero(/<(?:\w+:)?cad>([^<]+)</.exec(dentro)?.[1]));
     }
     m = ponto.exec(texto);
   }
@@ -54,6 +59,12 @@ export function lerGPX(texto) {
     if (d > 0.5) elevacao += d;
   }
 
+  const comAltitude = altitudes.filter((a) => a != null);
+  const media = (lista) => {
+    const v = lista.filter((x) => x != null && x > 0);
+    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+  };
+
   return {
     coordenadas,
     tempos,
@@ -61,8 +72,38 @@ export function lerGPX(texto) {
     fim: validos[validos.length - 1] || null,
     distanciaKm: comprimentoKm(coordenadas),
     elevacaoM: Math.round(elevacao),
+    elevacaoMaxM: comAltitude.length ? Math.round(Math.max(...comAltitude)) : null,
+    elevacaoMinM: comAltitude.length ? Math.round(Math.min(...comAltitude)) : null,
+    movimentoMin: tempoEmMovimento(coordenadas, tempos),
+    fcMedia: media(batimentos),
+    fcMaxima: batimentos.some((b) => b != null) ? Math.max(...batimentos.filter((b) => b != null)) : null,
+    cadencia: media(cadencias),
     nome,
   };
+}
+
+/**
+ * Tempo de movimentação: o total menos as paradas.
+ *
+ * Trecho abaixo de 0,5 m/s (1,8 km/h) conta como parado — é lento demais até
+ * para caminhada, então é semáforo, cadarço ou espera. Sem esse desconto, uma
+ * corrida com duas paradas longas mostra um ritmo médio que você não fez.
+ */
+export function tempoEmMovimento(coordenadas, tempos, minimoMs = 0.5) {
+  let segundos = 0;
+  for (let i = 1; i < coordenadas.length; i++) {
+    const t1 = tempos[i - 1];
+    const t2 = tempos[i];
+    if (!(t1 instanceof Date) || !(t2 instanceof Date)) continue;
+    const dt = (t2 - t1) / 1000;
+    if (!(dt > 0) || dt > 120) continue; // salto grande é pausa do próprio relógio
+    const [la1, ln1] = coordenadas[i - 1];
+    const [la2, ln2] = coordenadas[i];
+    const dLat = (la2 - la1) * 111320;
+    const dLng = (ln2 - ln1) * 111320 * Math.cos(((la1 + la2) / 2) * Math.PI / 180);
+    if (Math.hypot(dLat, dLng) / dt >= minimoMs) segundos += dt;
+  }
+  return segundos > 0 ? Math.round(segundos / 60 * 100) / 100 : null;
 }
 
 /**
@@ -140,6 +181,12 @@ export function corridaDoGPX(texto) {
     distanciaKm: Math.round(g.distanciaKm * 100) / 100,
     minutos: minutos && minutos > 0 ? minutos : null,
     elevacaoM: g.elevacaoM,
+    elevacaoMaxM: g.elevacaoMaxM,
+    movimentoMin: g.movimentoMin,
+    fcMedia: g.fcMedia,
+    fcMaxima: g.fcMaxima,
+    cadencia: g.cadencia,
+    nome: g.nome,
     traco: codificar(simplificar(g.coordenadas)),
     parciais: parciaisPorKm(g.coordenadas, g.tempos),
     origem: 'gpx',

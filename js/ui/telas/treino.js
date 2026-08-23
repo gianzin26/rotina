@@ -8,10 +8,15 @@ import { iniciarCorrida } from '../../nucleo/acoes.js';
 import { ocorrencias } from '../../nucleo/agenda.js';
 import { criarCronometro, mmss } from '../../nucleo/cronometro.js';
 import { estado, mudar } from '../../nucleo/store.js';
-import { corridas, kmPorTenis, testes5k } from '../../nucleo/treino.js';
-import { agoraMin, dataCurta, diaLogico, duracao, hhmm, nUm, uid } from '../../nucleo/util.js';
+import {
+  caloriasEstimadas, corridas, kmPorTenis, posicaoNaDistancia, testes5k,
+} from '../../nucleo/treino.js';
+import { resumo as resumoPeso } from '../../nucleo/peso.js';
+import { agoraMin, dataCurta, diaLogico, hhmm, nUm, uid } from '../../nucleo/util.js';
 import { avisarFase, avisarInicio, prepararAudio, segurarTela, soltarTela } from '../alarme.js';
-import { cartao, dado, etiqueta, fileiraDados, linha, titulo } from '../cartao.js';
+import {
+  cartao, dado, destaque, etiqueta, fileiraDados, linha, metricas, titulo,
+} from '../cartao.js';
 import { anexar, classeSituacao, h, variaveis } from '../dom.js';
 import {
   aviso, campo, confirmar, entradaNumero, entradaTexto, escolherNumero, fileiraRPE, folha,
@@ -35,6 +40,30 @@ export function render(tela, ctx) {
         h('p', { class: 'cabecalho-sub' }, 'Corrida'))),
     grade);
 }
+
+/* Corrida se mede em minutos e segundos: 27:39, não "28 min". O `duracao` do
+   núcleo arredonda para o minuto, que serve para sono e trabalho mas apaga
+   justamente a diferença que o corredor persegue. */
+function tempoDeCorrida(minutos) {
+  if (!(minutos > 0)) return '—';
+  const total = Math.round(minutos * 60);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const seg = total % 60;
+  const dd = (n) => String(n).padStart(2, '0');
+  return h ? `${h}:${dd(m)}:${dd(seg)}` : `${m}:${dd(seg)}`;
+}
+
+/** Diferença curta em linguagem de corrida: "1min 39s", "12s". */
+function diferencaDeTempo(minutos) {
+  const total = Math.round(Math.abs(minutos) * 60);
+  const m = Math.floor(total / 60);
+  const seg = total % 60;
+  return m ? `${m}min ${String(seg).padStart(2, '0')}s` : `${seg}s`;
+}
+
+/** Milhar com ponto, como 1.111 m. */
+const inteiro = (v) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v);
 
 /** A corrida prevista para hoje na rotina, se houver. */
 function previstaHoje(dia) {
@@ -161,41 +190,48 @@ function cartaoDoDia(ctx) {
     }, entradaRapida(c, grava, definirPace, ritmo));
   }
 
+  const cheias = (c.parciais || []).filter((p) => p.completa && p.pace > 0);
+  const melhorKm = cheias.length ? cheias.reduce((m, p) => (p.pace < m.pace ? p : m)) : null;
+  const kcal = caloriasEstimadas(c.distanciaKm, resumoPeso().media7);
+  const posicao = posicaoNaDistancia(c);
+  const variacao = compararMetades(cheias);
+
   return cartao({
-    titulo: 'Corrida de hoje',
+    titulo: c.nome || 'Corrida de hoje',
     periodo: c.inicio || (prevista ? hhmm(prevista.inicio) : 'avulsa'),
     // o pace é o número que o corredor procura primeiro
     metrica: ritmo != null ? paceTexto(ritmo) : '—',
     unidade: 'min/km',
     legenda: [
       c.distanciaKm > 0 ? `${nUm(c.distanciaKm, 2)} km` : null,
-      c.minutos > 0 ? duracao(c.minutos) : null,
+      c.minutos > 0 ? tempoDeCorrida(c.minutos) : null,
       c.elevacaoM ? `+${c.elevacaoM} m` : null,
     ].filter(Boolean).join(' · ') || 'falta distância e tempo',
     legendaSituacao: ritmo != null ? 'noAlvo' : null,
   },
-    fileiraDados(
-      dado('Distância', c.distanciaKm > 0 ? nUm(c.distanciaKm, 2) : '—', {
-        sufixo: 'km',
-        aoTocar: () => escolherNumero({
-          titulo: 'Distância', rotulo: 'Quilômetros', valor: c.distanciaKm ?? '', passo: 0.1, sufixo: 'km',
-          aoEscolher: (v) => grava({ distanciaKm: v }),
-        }),
-      }),
-      dado('Tempo', c.minutos > 0 ? duracao(c.minutos) : '—', {
-        aoTocar: () => escolherNumero({
-          titulo: 'Tempo', rotulo: 'Minutos', valor: c.minutos ?? '', passo: 1, sufixo: 'min',
-          aoEscolher: (v) => grava({ minutos: v }),
-        }),
-      }),
-      dado('Pace', ritmo != null ? paceTexto(ritmo) : '—', {
-        sufixo: 'min/km',
-        aoTocar: () => escolherNumero({
-          titulo: 'Pace', rotulo: 'Minutos por quilômetro (5,5 = 5:30)',
-          valor: ritmo != null ? Math.round(ritmo * 100) / 100 : '', passo: 0.05, sufixo: 'min/km',
-          aoEscolher: definirPace,
-        }),
-      })),
+    posicao && destaque(
+      posicao.posicao === 1
+        ? `Seu melhor tempo em ${nUm(c.distanciaKm, 1)} km`
+        : `Seu ${posicao.posicao}º melhor tempo em ${nUm(c.distanciaKm, 1)} km`,
+      posicao.diferencaMin != null
+        ? `${diferencaDeTempo(posicao.diferencaMin)} do ${posicao.posicao === 2 ? 'melhor' : 'anterior'} · ${posicao.total} corridas nessa distância`
+        : `entre ${posicao.total} corridas nessa distância`,
+      posicao.posicao === 1 ? 'noAlvo' : null,
+    ),
+    metricas(
+      { rotulo: 'Distância', valor: nUm(c.distanciaKm, 2), sufixo: 'km' },
+      { rotulo: 'Ritmo médio', valor: ritmo != null ? paceTexto(ritmo) : '—', sufixo: '/km' },
+      { rotulo: 'Tempo em movimento', valor: tempoDeCorrida(c.movimentoMin ?? c.minutos) },
+      c.movimentoMin && c.minutos > c.movimentoMin + 0.5
+        ? { rotulo: 'Tempo total', valor: tempoDeCorrida(c.minutos), nota: `${diferencaDeTempo(c.minutos - c.movimentoMin)} parado` }
+        : { rotulo: 'Melhor km', valor: melhorKm ? paceTexto(melhorKm.pace) : '—', sufixo: melhorKm ? '/km' : null },
+      c.elevacaoM != null && { rotulo: 'Ganho de elevação', valor: String(c.elevacaoM), sufixo: 'm' },
+      c.elevacaoMaxM != null && { rotulo: 'Elevação máxima', valor: inteiro(c.elevacaoMaxM), sufixo: 'm' },
+      kcal && { rotulo: 'Calorias', valor: inteiro(kcal), sufixo: 'kcal', nota: 'estimativa pelo seu peso' },
+      c.fcMedia && { rotulo: 'Freq. cardíaca', valor: String(c.fcMedia), sufixo: 'bpm', nota: c.fcMaxima ? `máx ${c.fcMaxima}` : null },
+      c.cadencia && { rotulo: 'Cadência', valor: String(c.cadencia * 2), sufixo: 'ppm' },
+      variacao && { rotulo: 'Segunda metade', valor: variacao.texto, nota: variacao.nota },
+    ),
     parciaisDaCorrida(c),
     c.traco ? percurso(c.traco, { altura: 150 }) : null,
     titulo('Esforço'),
@@ -218,7 +254,7 @@ function entradaRapida(c, grava, definirPace, ritmo) {
         aoEscolher: (v) => grava({ distanciaKm: v }),
       }),
     }),
-    dado('Tempo', c?.minutos > 0 ? duracao(c.minutos) : 'registrar', {
+    dado('Tempo', c?.minutos > 0 ? tempoDeCorrida(c.minutos) : 'registrar', {
       aoTocar: () => escolherNumero({
         titulo: 'Tempo', rotulo: 'Minutos', valor: c?.minutos ?? '', passo: 1, sufixo: 'min',
         aoEscolher: (v) => grava({ minutos: v }),
@@ -231,6 +267,28 @@ function entradaRapida(c, grava, definirPace, ritmo) {
         valor: '', passo: 0.05, sufixo: 'min/km', aoEscolher: definirPace,
       }),
     }));
+}
+
+/**
+ * Você acelerou ou caiu no fim?
+ *
+ * Compara o pace médio da primeira metade dos quilômetros com o da segunda.
+ * Terminar mais rápido é o que os treinadores chamam de negative split, e é
+ * sinal de corrida bem dosada.
+ */
+function compararMetades(cheias) {
+  if (cheias.length < 4) return null;
+  const meio = Math.floor(cheias.length / 2);
+  const media = (lista) => lista.reduce((a, p) => a + p.pace, 0) / lista.length;
+  const primeira = media(cheias.slice(0, meio));
+  const segunda = media(cheias.slice(-meio));
+  const dif = segunda - primeira;                 // positivo = ficou mais lento
+  const segundos = Math.round(Math.abs(dif) * 60);
+  if (segundos < 5) return { texto: 'constante', nota: 'mesmo ritmo do início ao fim' };
+  return {
+    texto: `${dif < 0 ? '−' : '+'}${segundos}s`,
+    nota: dif < 0 ? 'acelerou no fim' : 'caiu no fim',
+  };
 }
 
 /**
@@ -357,7 +415,7 @@ function cartaoCorridas() {
     metrica: nUm(totalKm, 1),
     unidade: 'km',
     legenda: testes.length
-      ? `melhor teste de 5 km: ${duracao(Math.min(...testes.map((t) => t.minutos)))}`
+      ? `melhor teste de 5 km: ${tempoDeCorrida(Math.min(...testes.map((t) => t.minutos)))}`
       : 'acumulado de todas as corridas',
   },
     h('div', { class: 'lista' }, lista.map((c) => linha(
