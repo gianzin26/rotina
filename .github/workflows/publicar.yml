@@ -40,7 +40,8 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html app.js styles.css manifest.json sw.js _site/
-          cp -r js icons _site/
+          cp -r js icons fotos _site/
+          rm -f _site/fotos/LEIA-ME.md
           echo "Publicado: $(grep -o "rotina-[a-f0-9]*" _site/sw.js | head -1)"
           find _site -type f | sort
 
