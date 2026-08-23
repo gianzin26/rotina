@@ -26,7 +26,6 @@ const ARQUIVOS = [
   './icons/nav/corpo.png',
   './icons/nav/ajustes.png',
   './js/nucleo/creatina.js',
-  './js/nucleo/cronometro.js',
   './js/nucleo/demo.js',
   './js/nucleo/janelas.js',
   './js/nucleo/metas.js',

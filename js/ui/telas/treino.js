@@ -1,4 +1,4 @@
-// ui/telas/treino.js — a corrida do dia, o cronômetro de intervalos e o histórico.
+// ui/telas/treino.js — a corrida do dia, os tênis e o histórico.
 //
 // Musculação saiu daqui a pedido: a tela é só corrida. Os treinos de força já
 // registrados continuam guardados em `registros.treino` e no backup — o que
@@ -7,29 +7,23 @@
 import { iniciarCorrida } from '../../nucleo/acoes.js';
 import { importarGPX } from '../../nucleo/importar.js';
 import { ocorrencias } from '../../nucleo/agenda.js';
-import { criarCronometro, mmss } from '../../nucleo/cronometro.js';
 import { estado, mudar } from '../../nucleo/store.js';
 import {
   caloriasEstimadas, corridas, kmPorTenis, posicaoNaDistancia, testes5k,
 } from '../../nucleo/treino.js';
 import { resumo as resumoPeso } from '../../nucleo/peso.js';
 import { agoraMin, dataCurta, dataLonga, diaLogico, hhmm, nUm, uid } from '../../nucleo/util.js';
-import { avisarFase, avisarInicio, prepararAudio, segurarTela, soltarTela } from '../alarme.js';
 import { escolherArquivo, lerTexto } from '../arquivos.js';
 import {
   cartao, dado, destaque, etiqueta, fileiraDados, linha, metricas, titulo,
 } from '../cartao.js';
 import { anexar, classeSituacao, h, variaveis, vazio } from '../dom.js';
 import {
-  aviso, campo, confirmar, entradaNumero, entradaTexto, escolherNumero, fileiraRPE, folha,
+  aviso, campo, confirmar, entradaNumero, entradaTexto, escolherNumero, folha,
 } from '../folha.js';
 import { icone } from '../icones.js';
 import { percurso } from '../percurso.js';
 import { paceTexto } from './visaoGeral.js';
-
-let cron = null;
-let cronConfig = null;
-let pintarCron = () => {};
 
 function importarCorrida(ctx) {
   escolherArquivo('.gpx,application/gpx+xml,text/xml', async (arquivo) => {
@@ -47,7 +41,7 @@ function importarCorrida(ctx) {
 
 export function render(tela, ctx) {
   const grade = h('div', { class: 'grade' });
-  anexar(grade, cartaoDoDia(ctx), cartaoTenis(ctx), cartaoCronometro(ctx), cartaoCorridas());
+  anexar(grade, cartaoDoDia(ctx), cartaoTenis(ctx), cartaoCorridas());
 
   anexar(tela,
     h('header', { class: 'cabecalho' },
@@ -94,93 +88,6 @@ const FOTOS = [
 /** A corrida prevista para hoje na rotina, se houver. */
 function previstaHoje(dia) {
   return ocorrencias(dia).filter((o) => o.tipo === 'corrida').sort((a, b) => a.inicio - b.inicio)[0] || null;
-}
-
-function cartaoCronometro(ctx) {
-  const cfg = estado.perfil.corrida || { ciclos: 6, corridaMin: 3, caminhadaMin: 2 };
-  const painel = h('div', { class: 'cron' });
-  const botoes = h('div', { class: 'cron-botoes' });
-
-  pintarCron = (e) => {
-    const tipo = e.fase?.tipo || 'corrida';
-    painel.replaceChildren(
-      h('span', { class: `cron-fase tipo-${tipo}` },
-        h('span', { class: 'cron-fase-ponto' }),
-        e.terminado ? 'Fim da sessão' : e.fase?.rotulo || 'Pronto'),
-      h('span', { class: 'cron-tempo' }, mmss(e.terminado ? 0 : e.restante)),
-      h('div', { class: 'cron-barra' },
-        // sessão sem fases daria 0/0: a variável CSS receberia NaN
-        h('div', { class: 'cron-barra-cheia', vars: { progresso: e.totalSeg ? Math.min(1, e.decorridoTotal / e.totalSeg) : 0 } })),
-      h('span', { class: 'texto-suave' },
-        `${Math.min(e.indice + 1, e.totalFases)} de ${e.totalFases} · faltam ${mmss(Math.max(0, e.totalSeg - e.decorridoTotal))}`));
-  };
-
-  const criar = () => {
-    cronConfig = { ...cfg };
-    cron = criarCronometro(cfg, {
-      aoAtualizar: (e) => pintarCron(e),
-      aoTrocarFase: (fase) => { avisarFase(fase); if (!fase) soltarTela(); },
-      aoTerminar: (minutos) => {
-        aviso('Sessão de intervalos concluída.');
-        registrarCorridaConcluida(minutos, ctx);
-      },
-    });
-  };
-
-  if (!cron || JSON.stringify(cronConfig) !== JSON.stringify(cfg)) criar();
-  pintarCron(cron.estado());
-
-  const atualizarBotoes = () => {
-    const e = cron.estado();
-    botoes.replaceChildren(
-      h('button', {
-        class: 'botao primario',
-        onclick: () => {
-          prepararAudio();
-          if (e.rodando) { cron.pausar(); soltarTela(); }
-          else { cron.iniciar(); avisarInicio(); segurarTela(); }
-          atualizarBotoes();
-        },
-      }, icone(e.rodando ? 'pausar' : 'iniciar'),
-        e.rodando ? 'Pausar' : e.decorridoTotal > 0 ? 'Retomar' : 'Iniciar'),
-      h('button', {
-        class: 'botao', onclick: () => { cron.pular(); atualizarBotoes(); },
-      }, icone('pular'), 'Pular'),
-      h('button', {
-        class: 'botao perigo-texto',
-        onclick: () => {
-          const m = cron.parar();
-          soltarTela();
-          atualizarBotoes();
-          if (m > 1) registrarCorridaConcluida(m, ctx);
-        },
-      }, icone('zerar'), 'Zerar'));
-  };
-  atualizarBotoes();
-
-  function salvarCfg(campos) {
-    mudar(() => { estado.perfil.corrida = { ...cfg, ...campos }; });
-    cron = null;
-    ctx.recarregar();
-  }
-
-  const config = h('div', { class: 'cron-config' },
-    campo('Ciclos', entradaNumero(cfg.ciclos, (v) => salvarCfg({ ciclos: Math.max(1, v || 1) }), { min: 1, step: 1 })),
-    campo('Corrida (min)', entradaNumero(cfg.corridaMin, (v) => salvarCfg({ corridaMin: v ?? 0 }), { min: 0, step: 0.5 })),
-    campo('Caminhada (min)', entradaNumero(cfg.caminhadaMin, (v) => salvarCfg({ caminhadaMin: v ?? 0 }), { min: 0, step: 0.5 })));
-
-  return cartao({
-    titulo: 'Cronômetro de intervalo',
-    subtitulo: `${cfg.ciclos}× ${cfg.corridaMin} min corrida / ${cfg.caminhadaMin} min caminhada`,
-  }, painel, botoes, config);
-}
-
-function registrarCorridaConcluida(minutos, ctx) {
-  const dia = diaLogico();
-  let c = corridas().find((x) => x.data === dia);
-  if (!c) c = iniciarCorrida(dia, null, agoraMin());
-  mudar(() => { c.minutos = Math.round(minutos); });
-  ctx.recarregar();
 }
 
 function cartaoDoDia(ctx) {
@@ -271,8 +178,6 @@ function cartaoDoDia(ctx) {
     ),
     parciaisDaCorrida(c),
     c.traco ? percurso(c.traco, { altura: 150 }) : null,
-    titulo('Esforço'),
-    fileiraRPE(c.rpe ?? null, (v) => grava({ rpe: v })),
     h('div', { class: 'lista' },
       linha(h('span', { class: 'linha-titulo' }, 'Tênis'),
         h('select', {

@@ -96,7 +96,6 @@
   --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
 
-  --texto-cron: 44px;      /* Display */
   --texto-metrica: 40px;   /* Display — número grande do cartão */
   --texto-metrica-media: 24px; /* Display — número da grade de métricas */
   --texto-titulo: 32px;    /* Display — título de tela */
@@ -150,7 +149,6 @@
   --largura-painel: 1320px;
   --largura-folha: 480px;
   --largura-acao-desktop: 320px;
-  --largura-input-tabela: 88px;
   --altura-textarea: 96px;
   --folga-rodape: 88px;
   --folga-rodape-desktop: 104px;
@@ -193,8 +191,6 @@
   --g-tracejado-grade: 2 2;  /* a grade da referência é tracejada */
   --g-tracejado: 4 4;        /* meta */
   --g-opacidade-area: .3;    /* topo do gradiente sob a linha */
-  --g-barra: 4px;
-  --g-barra-passo: 10px;
 }
 /* ---------------- tema escuro ----------------
    Preto de verdade: o fundo e o cartão são #000, não cinza escuro. O que
@@ -333,13 +329,7 @@ button { -webkit-tap-highlight-color: transparent; }
   outline: var(--foco) solid var(--accent);
   outline-offset: var(--foco);
   border-radius: var(--raio-p);
-}
-
-.tabular, .metrica-num, .dado-valor, .cron-tempo, .cal-dia, .lt-hora, .bloco-hora, .marco-hora {
-  font-variant-numeric: tabular-nums;
-}
-
-.oculto { display: none; }
+}.oculto { display: none; }
 .fora-da-tela { position: fixed; opacity: 0; pointer-events: none; }
 
 .icone {
@@ -1173,38 +1163,7 @@ button.periodo { cursor: pointer; min-height: var(--toque); }
   font-weight: var(--peso-semi);
   cursor: pointer;
 }
-.chip-abc.ativo { background: var(--accent-texto); border-color: transparent; color: var(--sobre-acento); }
-
-/* ---------------- cronômetro ---------------- */
-
-.cron { display: flex; flex-direction: column; align-items: center; gap: var(--esp-2); padding: var(--esp-2) 0; }
-/* rótulo em texto normal com bolinha ao lado: a cor da fase vira preenchimento,
-   nunca letra colorida sobre branco */
-.cron-fase {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--esp-2);
-  font-size: var(--texto-cartao);
-  font-weight: var(--peso-semi);
-  color: var(--text);
-}
-.cron-fase-ponto { width: var(--esp-2); height: var(--esp-2); border-radius: 50%; background: var(--cor, var(--text-soft)); flex: none; }
-.cron-tempo {
-  font-family: var(--font-display);
-  font-size: var(--texto-cron);
-  font-weight: var(--peso-forte);
-  letter-spacing: var(--tracking-display);
-  line-height: var(--altura-linha-justa);
-}
-.cron-barra { width: 100%; height: var(--esp-1); border-radius: var(--raio-total); background: var(--grid); overflow: hidden; }
-/* --progresso vem do JS como fração de 0 a 1 */
-.cron-barra-cheia { height: 100%; width: calc(var(--progresso, 0) * 100%); background: var(--accent); transition: width var(--dur-media) linear; }
-.cron-botoes { display: flex; gap: var(--esp-2); width: 100%; }
-/* três botões cabem lado a lado até 320px: encolhem pelo respiro, não pelo texto */
-.cron-botoes .botao { flex: 1 1 0; min-width: 0; padding-inline: var(--esp-2); }
-.cron-config { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--esp-2); }
-
-/* ---------------- formulários ---------------- */
+.chip-abc.ativo { background: var(--accent-texto); border-color: transparent; color: var(--sobre-acento); }/* ---------------- formulários ---------------- */
 
 .pilha { display: flex; flex-direction: column; gap: var(--esp-3); }
 .pilha-fina { display: flex; flex-direction: column; gap: var(--esp-2); }
