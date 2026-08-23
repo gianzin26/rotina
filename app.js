@@ -4,6 +4,7 @@ import { desligar as desligarDemo, ligado as demoLigado } from './js/nucleo/demo
 import { configurada as sincConfigurada, observarEscritas, sincronizar } from './js/nucleo/nuvem.js';
 import { carregar, definirRelatorDeFalha } from './js/nucleo/store.js';
 import { iniciarAtualizacoes } from './js/ui/atualizacao.js';
+import { aviso as avisar } from './js/ui/folha.js';
 import { $, h, limpar, variaveis } from './js/ui/dom.js';
 import { icone } from './js/ui/icones.js';
 import { aplicarTema, observarSistema } from './js/ui/tema.js';
@@ -172,7 +173,13 @@ async function sincronizarSePuder() {
   sincronizando = true;
   try {
     const r = await sincronizar();
-    if (r.estado === 'sincronizado') desenhar();
+    if (r.estado !== 'sincronizado') return;
+    desenhar();
+    if (r.corridasNovas) {
+      avisar(r.corridasNovas === 1
+        ? 'Uma corrida chegou do atalho.'
+        : `${r.corridasNovas} corridas chegaram do atalho.`);
+    }
   } finally {
     sincronizando = false;
   }

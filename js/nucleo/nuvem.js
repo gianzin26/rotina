@@ -6,6 +6,7 @@
 //
 // Offline não é erro: a escrita fica pendente e sobe na próxima oportunidade.
 
+import { importarGPX } from './importar.js';
 import { carimbar, fotografar, mesclar } from './sincronizacao.js';
 import { definirAoSalvar, estado, substituirEstado } from './store.js';
 
@@ -54,6 +55,39 @@ export function observarEscritas() {
 }
 
 /**
+ * Recolhe as corridas que o atalho do celular deixou no servidor.
+ *
+ * Roda antes da mesclagem, para as corridas novas subirem já na mesma rodada.
+ * A fila só é esvaziada depois de tudo importado: se a rede cair no meio, na
+ * próxima vez elas ainda estarão lá, e importar de novo não duplica — o
+ * registro do dia é preenchido, não recriado.
+ *
+ * @returns {Promise<number>} quantas corridas entraram
+ */
+async function recolherCorridas(url, codigo) {
+  let fila;
+  try {
+    const r = await fetch(`${url}/${encodeURIComponent(codigo)}/gpx`, { cache: 'no-store' });
+    if (!r.ok) return 0;
+    fila = await r.json();
+  } catch {
+    return 0;
+  }
+  if (!Array.isArray(fila) || !fila.length) return 0;
+
+  let entraram = 0;
+  for (const item of fila) {
+    try { importarGPX(item.gpx); entraram++; } catch { /* arquivo torto não trava a fila */ }
+  }
+  try {
+    await fetch(`${url}/${encodeURIComponent(codigo)}/gpx`, { method: 'DELETE' });
+  } catch {
+    /* sem apagar, a próxima rodada reimporta — e reimportar não duplica */
+  }
+  return entraram;
+}
+
+/**
  * Uma rodada completa: baixa, mescla, aplica no aparelho e devolve ao servidor.
  * @returns {Promise<{estado:'sincronizado'|'desligado'|'offline'|'erro', conflitos?:number, mensagem?:string}>}
  */
@@ -64,6 +98,8 @@ export async function sincronizar() {
   if (!CODIGO_VALIDO.test(d.codigo)) {
     return { estado: 'erro', mensagem: 'o código precisa ter de 12 a 40 caracteres, só letras minúsculas, números e hífen' };
   }
+
+  const corridasNovas = await recolherCorridas(d.url, d.codigo);
 
   let remoto = null;
   try {
@@ -107,7 +143,11 @@ export async function sincronizar() {
   }
 
   gravar({ ...ler(), ultimo: Date.now(), pendente: false });
-  return { estado: 'sincronizado', conflitos: (juntos.conflitos || []).length };
+  return {
+    estado: 'sincronizado',
+    conflitos: (juntos.conflitos || []).length,
+    corridasNovas,
+  };
 }
 
 /** A mesma regra que o servidor aplica, para recusar aqui e explicar direito. */
