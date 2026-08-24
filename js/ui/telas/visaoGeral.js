@@ -53,12 +53,28 @@ export function paceTexto(minPorKm) {
   return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/**
+ * Saudação pela hora do relógio, com o primeiro nome do perfil.
+ *
+ * Sem nome configurado — ou ainda com o texto de exemplo — cumprimenta sem
+ * nome, em vez de dizer "Bom dia, Minha rotina".
+ */
+function saudacao() {
+  const hora = new Date().getHours();
+  const parte = hora >= 5 && hora < 12 ? 'Bom dia'
+    : hora >= 12 && hora < 18 ? 'Boa tarde'
+      : 'Boa noite';
+  const nome = (estado.perfil.nome || '').trim();
+  const proprio = nome && nome !== 'Minha rotina' && nome !== 'Demonstração';
+  return proprio ? `${parte}, ${nome.split(/\s+/)[0]}` : parte;
+}
+
 export function render(tela, ctx) {
   const dia = diaLogico();
 
   anexar(tela,
     h('header', { class: 'cabecalho' },
-      h('div', {}, h('h1', {}, 'Visão geral'))),
+      h('div', {}, h('h1', {}, saudacao()))),
     h('div', { class: 'grade' },
       cartaoContagem(dia),
       cartaoHoraDeAcordar(dia, ctx),
