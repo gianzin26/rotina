@@ -1,8 +1,8 @@
-// ui/telas/dinheiro.js — o mês em dinheiro: o que chega, o que sai, o que sobra.
+// ui/telas/dinheiro.js — o mês em finanças: o que chega, o que sai, o que sobra.
 
 import {
-  CATEGORIAS, balanco, config, diasClassificados, mesAnterior, mesAtual,
-  mesDe, mesSeguinte, mesesComMovimento, ritmo,
+  CATEGORIAS, balanco, config, configurado, diasClassificados, mesAnterior,
+  mesAtual, mesDe, mesSeguinte, mesesComMovimento, ritmo,
 } from '../../nucleo/dinheiro.js';
 import { estado, mudar, reg } from '../../nucleo/store.js';
 import { dataCurta, diaLogico, uid } from '../../nucleo/util.js';
@@ -40,23 +40,37 @@ export function render(tela, ctx) {
   anexar(tela,
     h('header', { class: 'cabecalho' },
       h('div', {},
-        h('h1', {}, 'Dinheiro'),
+        h('h1', {}, 'Finanças'),
         h('p', { class: 'cabecalho-sub' }, mesPorExtenso(mes))),
       h('div', { class: 'cabecalho-acoes' },
         h('button', { class: 'botao primario', onclick: () => folhaGasto(null, ctx) },
           icone('mais'), 'Gasto'))),
     h('div', { class: 'grade' },
-      cartaoSobra(b, mes, ctx),
+      configurado() ? cartaoSobra(b, mes, ctx) : cartaoPrimeiroUso(ctx),
       cartaoReceita(b, ctx),
       cartaoCategorias(b, ctx),
       cartaoDias(mes, ctx),
       cartaoLancamentos(b, ctx)));
 }
 
+/* Antes de saber salário e data de admissão o app não tem como fechar mês
+   nenhum. Melhor pedir os dois do que preencher a tela com um chute. */
+function cartaoPrimeiroUso(ctx) {
+  return cartao({ titulo: 'Falta combinar o básico' },
+    h('p', { class: 'texto-suave' },
+      'Informe seu salário e o primeiro dia de trabalho. Sem isso o app não '
+      + 'sabe o que você já ganhou nem quando o dinheiro cai.'),
+    h('button', { class: 'botao primario largura-total', onclick: () => folhaConfig(ctx) },
+      icone('lapis'), 'Configurar'));
+}
+
 /* ---------------- a pergunta principal ---------------- */
 
 function cartaoSobra(b, mes, ctx) {
   const r = ritmo(mes, diaLogico());
+  /* Mês sem receita não tem orçamento: barra e teto de gasto não querem dizer
+     nada, e uma barra cheia diria justamente o contrário do que está havendo. */
+  const semReceita = b.receita.total === 0;
   const fracao = b.disponivel > 0
     ? Math.max(0, Math.min(1, b.gastos.total / b.disponivel))
     : 1;
@@ -66,15 +80,22 @@ function cartaoSobra(b, mes, ctx) {
     titulo: 'Sobra do mês',
     periodo: { rotulo: mesPorExtenso(mes), aoTrocar: () => folhaMes(ctx) },
     metrica: reais(b.sobra),
-    legenda: estourou
-      ? `${reais(-b.restante)} acima da meta de ${reais(b.meta)}`
-      : `meta de ${reais(b.meta)} · ainda pode gastar ${reais(b.restante)}`,
+    legenda: semReceita
+      ? (b.emCurso.total > 0 && b.pagamentoEmCurso
+        ? `Nada caiu neste mês · o primeiro pagamento é ${dataCurta(b.pagamentoEmCurso)}`
+        : 'Nada caiu neste mês')
+      : estourou
+        ? `${reais(-b.restante)} acima da meta de ${reais(b.meta)}`
+        : `meta de ${reais(b.meta)} · ainda pode gastar ${reais(b.restante)}`,
     legendaSituacao: b.situacao,
   },
-  variaveis(h('div', { class: 'barra-gasto' },
-    h('div', { class: `barra-gasto-cheia ${classeSituacao(b.situacao)}` })), { fracao }),
+  semReceita ? null
+    : variaveis(h('div', { class: 'barra-gasto' },
+      h('div', { class: `barra-gasto-cheia ${classeSituacao(b.situacao)}` })), { fracao }),
   h('p', { class: 'texto-suave barra-gasto-nota' },
-    `${reais(b.gastos.total)} gastos de ${reais(b.disponivel)} disponíveis`),
+    semReceita
+      ? `${reais(b.gastos.total)} gastos, sem nenhuma receita neste mês`
+      : `${reais(b.gastos.total)} gastos de ${reais(b.disponivel)} disponíveis`),
   metricas(
     { rotulo: 'Entra', valor: reais(b.receita.total) },
     { rotulo: 'Sai', valor: reais(b.gastos.total) },
@@ -82,8 +103,9 @@ function cartaoSobra(b, mes, ctx) {
       // com sinal sempre: sem ele, estar R$ 1.164 abaixo do esperado se lê
       // igualzinho a estar R$ 1.164 acima
       rotulo: 'Ritmo',
-      valor: `${r.adiantado > 0 ? '+' : '−'}${reais(Math.abs(r.adiantado))}`,
-      nota: r.adiantado > 0 ? 'acima do esperado' : 'abaixo do esperado',
+      valor: r.semTeto ? '—' : `${r.adiantado > 0 ? '+' : '−'}${reais(Math.abs(r.adiantado))}`,
+      nota: r.semTeto ? 'sem salário no mês'
+        : r.adiantado > 0 ? 'acima do esperado' : 'abaixo do esperado',
     },
     { rotulo: 'Dia do mês', valor: String(r.diaDoMes), nota: `de ${r.diasNoMes}` },
   ));
@@ -93,20 +115,51 @@ function cartaoSobra(b, mes, ctx) {
 
 function cartaoReceita(b, ctx) {
   const rec = b.receita;
+  const curso = b.emCurso;
+  const inicio = config().inicioTrabalho;
+
+  /* Mês sem nada a receber precisa dizer POR QUE, senão o zero parece defeito
+     do app. E precisa mostrar o que já está sendo acumulado, que é a única
+     notícia boa que existe no primeiro mês. */
+  const nada = rec.total === 0;
+  const comecouNesteMes = inicio && mesDe(inicio) === b.mes;
 
   return cartao({
     titulo: 'O que entra',
-    subtitulo: `Trabalhado em ${mesPorExtenso(rec.mes)}`,
-    periodo: b.pagamento ? `cai ${dataCurta(b.pagamento)}` : 'sem data',
+    subtitulo: nada
+      ? `Nada cai em ${mesPorExtenso(b.mes)}`
+      : `Trabalhado em ${mesPorExtenso(rec.mes)}`,
+    periodo: nada || !b.pagamento ? null : `cai ${dataCurta(b.pagamento)}`,
     metrica: reais(rec.total),
-    legenda: `${reais(rec.base)} de base mais ${rec.diasNoEscritorio} dias de vale`,
+    legenda: nada
+      ? (inicio
+        ? `Você começou em ${dataCurta(inicio)}, então não há mês anterior a receber`
+        : 'Informe o primeiro dia de trabalho')
+      : `${reais(rec.base)} de base mais ${rec.diasNoEscritorio} dias de vale`,
   },
-  metricas(
-    { rotulo: 'Base', valor: reais(rec.base) },
+  nada ? null : metricas(
+    {
+      rotulo: 'Base',
+      valor: reais(rec.base),
+      nota: rec.parcial ? `proporcional a ${rec.diasEmpregado} de 30 dias` : null,
+    },
     { rotulo: 'Vales', valor: reais(rec.vales), nota: `${reais(rec.porDia)} por dia` },
     { rotulo: 'No escritório', valor: String(rec.diasNoEscritorio), nota: 'dias com vale' },
     { rotulo: 'Em casa', valor: String(rec.diasEmCasa), nota: rec.diasEmCasa ? 'sem vale' : null },
   ),
+
+  // o que está sendo trabalhado agora e só vira dinheiro no mês que vem
+  curso.total > 0 && b.pagamentoEmCurso
+    ? h('div', { class: 'em-curso' },
+      h('div', { class: 'em-curso-topo' },
+        h('span', { class: 'em-curso-rotulo' },
+          `Já trabalhado em ${mesPorExtenso(b.mes).replace(/ de \d+$/, '')}`),
+        h('span', { class: 'em-curso-valor' }, reais(curso.total))),
+      h('span', { class: 'em-curso-nota' },
+        `cai ${dataCurta(b.pagamentoEmCurso)} · ${curso.diasNoEscritorio} dias no escritório`
+        + (curso.parcial && comecouNesteMes ? `, base proporcional a ${curso.diasEmpregado} dias` : '')))
+    : null,
+
   h('button', { class: 'botao largura-total', onclick: () => folhaConfig(ctx) },
     icone('lapis'), 'Ajustar salário e meta'));
 }
@@ -138,9 +191,11 @@ function cartaoCategorias(b, ctx) {
 
 function cartaoDias(mes, ctx) {
   const dias = diasClassificados(mes);
-  const uteis = dias.filter((d) => d.tipo !== 'fimDeSemana');
+  // dia anterior à admissão não é dia útil dele: contá-lo inflaria o mês
+  const uteis = dias.filter((d) => d.tipo !== 'fimDeSemana' && d.tipo !== 'antes');
   const feriados = dias.filter((d) => d.tipo === 'feriado');
   const noEscritorio = dias.filter((d) => d.tipo === 'escritorio').length;
+  const antes = dias.filter((d) => d.tipo === 'antes').length;
 
   return cartao({
     titulo: 'Dias do mês',
@@ -177,7 +232,9 @@ function cartaoDias(mes, ctx) {
     )))
     : null,
   h('p', { class: 'texto-suave' },
-    `${uteis.length} dias úteis · ${feriados.length} feriados · toque num dia para marcar home office`));
+    (antes ? `${antes} dias antes da admissão · ` : '')
+    + `${uteis.length} dias úteis · ${feriados.length} feriados`
+    + (uteis.length ? ' · toque num dia para marcar home office' : '')));
 }
 
 function alternarCasa(dataISO) {
@@ -295,9 +352,16 @@ function folhaConfig(ctx) {
       campo('Transporte por dia', entradaNumero(novo.valeTransporte, (v) => { novo.valeTransporte = v || 0; }, { step: 5 }))),
     campo('Meta de sobra', entradaNumero(novo.metaSobra, (v) => { novo.metaSobra = v || 0; }, { step: 100 }),
       'Quanto você quer que sobre todo mês'),
+    campo('Primeiro dia de trabalho', h('input', {
+      type: 'date',
+      value: novo.inicioTrabalho || '',
+      onchange: (e) => { novo.inicioTrabalho = e.target.value || null; },
+    }), 'Antes desta data nada é contado como trabalhado'),
     h('button', {
       class: 'botao primario largura-total',
       onclick: () => {
+        if (!(novo.salarioBase > 0)) { aviso('Informe o salário base.'); return; }
+        if (!novo.inicioTrabalho) { aviso('Informe o primeiro dia de trabalho.'); return; }
         mudar(() => { estado.perfil.financeiro = novo; });
         fechar();
         ctx.recarregar();

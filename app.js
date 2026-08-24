@@ -26,7 +26,7 @@ const ABAS = [
   { id: 'semana', rotulo: 'Semana', view: semana },
   { id: 'treino', rotulo: 'Treino', view: treino },
   { id: 'corpo', rotulo: 'Corpo', view: corpo },
-  { id: 'dinheiro', rotulo: 'Dinheiro', rotuloCurto: 'Grana', view: dinheiro },
+  { id: 'dinheiro', rotulo: 'Finanças', view: dinheiro },
   { id: 'ajustes', rotulo: 'Ajustes', view: ajustes },
 ];
 

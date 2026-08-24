@@ -1695,6 +1695,9 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 }
 .barra-gasto-cheia.amarelo { background: var(--amarelo-grafico); }
 .barra-gasto-cheia.vermelho { background: var(--vermelho-grafico); }
+/* sem esta regra o estado neutro herdava o verde e um mês sem salário
+   aparecia como mês em dia */
+.barra-gasto-cheia.neutro { background: var(--borda-forte, var(--text-soft)); opacity: .45; }
 
 .barra-gasto-nota { margin-top: var(--esp-2); font-size: var(--texto-legenda); }
 
@@ -1768,6 +1771,35 @@ button.dia-caixa { cursor: pointer; }
 .dia-casa { background: var(--tinta-amarela); color: var(--amarelo-texto); }
 .dia-feriado { background: var(--tinta-vermelha); color: var(--vermelho-texto); }
 .dia-fimDeSemana { background: none; color: var(--text-soft); }
+/* antes da admissão: o dia existe no calendário, mas não é dele */
+.dia-antes { background: none; color: var(--text-soft); opacity: .35; }
+
+/* o que já foi trabalhado e ainda não caiu: a notícia do primeiro mês */
+.em-curso {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--tinta-accent);
+}
+.em-curso-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.em-curso-rotulo { font-weight: 600; color: var(--accent-texto); }
+.em-curso-valor {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-texto);
+}
+.em-curso-nota {
+  display: block;
+  margin-top: 3px;
+  font-size: .82rem;
+  color: var(--accent-texto);
+  opacity: .8;
+}
 
 .legenda-dias {
   display: flex;

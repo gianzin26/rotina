@@ -16,15 +16,26 @@ export const CATEGORIAS = [
 ];
 
 const PADRAO = {
-  salarioBase: 5000,
+  // Sem chute: um salário inventado no código vira dinheiro que nunca existiu
+  // na tela. Enquanto não for informado, o mês simplesmente não fecha.
+  salarioBase: 0,
   valeRefeicao: 40,
   valeTransporte: 25,
-  metaSobra: 4000,
+  metaSobra: 0,
+  // Antes deste dia não se trabalhou, então não se ganhou. Sem ele o app
+  // preenche meses anteriores com um emprego que ainda não existia.
+  inicioTrabalho: null,
   // carnaval e corpus christi são facultativos: contam como dia parado
   facultativoNaoTrabalha: true,
 };
 
 export const config = () => ({ ...PADRAO, ...(estado.perfil.financeiro || {}) });
+
+/** O mês só fecha depois que salário e primeiro dia de trabalho existem. */
+export function configurado() {
+  const c = config();
+  return c.salarioBase > 0 && !!c.inicioTrabalho;
+}
 
 const dd = (n) => String(n).padStart(2, '0');
 export const mesDe = (dataISO) => dataISO.slice(0, 7);
@@ -63,7 +74,7 @@ export const emCasa = (dataISO) => reg('homeOffice').some((x) => x.data === data
  * O padrão é presencial, por escolha do dono: ir ao escritório é a regra, e o
  * que se marca é a exceção.
  *
- * @returns {Array<{data:string, tipo:'fimDeSemana'|'feriado'|'casa'|'escritorio', feriado?:object}>}
+ * @returns {Array<{data:string, tipo:'antes'|'fimDeSemana'|'feriado'|'casa'|'escritorio', feriado?:object}>}
  */
 export function diasClassificados(anoMes) {
   const ano = Number(anoMes.slice(0, 4));
@@ -71,6 +82,9 @@ export function diasClassificados(anoMes) {
   const c = config();
 
   return diasDoMes(anoMes).map((data) => {
+    // antes da admissão o dia não é fim de semana nem feriado nem trabalho:
+    // é um dia em que ele simplesmente não era empregado
+    if (c.inicioTrabalho && data < c.inicioTrabalho) return { data, tipo: 'antes' };
     if (ehFimDeSemana(data)) return { data, tipo: 'fimDeSemana' };
     const f = feriados.get(data);
     if (f && (!f.facultativo || c.facultativoNaoTrabalha)) return { data, tipo: 'feriado', feriado: f };
@@ -86,17 +100,41 @@ export function diasClassificados(anoMes) {
 export function receitaGanhaEm(anoMes) {
   const c = config();
   const dias = diasClassificados(anoMes);
-  const noEscritorio = dias.filter((d) => d.tipo === 'escritorio').length;
   const porDia = c.valeRefeicao + c.valeTransporte;
+
+  /* Sem vínculo informado não há base nem vale. Antes disso os vales sozinhos
+     já enchiam o mês de dinheiro que nunca foi ganho. */
+  if (!configurado()) {
+    return {
+      mes: anoMes, base: 0, baseCheia: c.salarioBase, parcial: false,
+      diasEmpregado: 0, diasNoMes: dias.length, diasNoEscritorio: 0,
+      diasEmCasa: 0, feriados: 0, porDia, vales: 0, total: 0,
+    };
+  }
+
+  const noEscritorio = dias.filter((d) => d.tipo === 'escritorio').length;
+  const diasEmpregado = dias.filter((d) => d.tipo !== 'antes').length;
+
+  /* No mês da admissão a base é proporcional aos dias corridos de vínculo,
+     na conta de 30 dias que a folha usa. Mês inteiro trabalhado paga cheio;
+     mês inteiro antes da admissão não paga nada. */
+  const base = diasEmpregado === 0 ? 0
+    : diasEmpregado === dias.length ? c.salarioBase
+      : Math.round((c.salarioBase / 30) * diasEmpregado);
+
   return {
     mes: anoMes,
-    base: c.salarioBase,
+    base,
+    baseCheia: c.salarioBase,
+    parcial: diasEmpregado > 0 && diasEmpregado < dias.length,
+    diasEmpregado,
+    diasNoMes: dias.length,
     diasNoEscritorio: noEscritorio,
     diasEmCasa: dias.filter((d) => d.tipo === 'casa').length,
     feriados: dias.filter((d) => d.tipo === 'feriado').length,
     porDia,
     vales: noEscritorio * porDia,
-    total: c.salarioBase + noEscritorio * porDia,
+    total: base + noEscritorio * porDia,
   };
 }
 
@@ -147,21 +185,29 @@ export function gastosDoMes(anoMes) {
 export function balanco(anoMes) {
   const c = config();
   const receita = receitaQueChega(anoMes);
+  // o que está sendo trabalhado agora e só vira dinheiro no mês que vem
+  const emCurso = receitaGanhaEm(anoMes);
   const g = gastosDoMes(anoMes);
   const sobra = receita.total - g.total;
-  const disponivel = receita.total - c.metaSobra;
+  // sem receita o teto seria negativo, o que não quer dizer nada: é zero
+  const disponivel = Math.max(0, receita.total - c.metaSobra);
 
   return {
     mes: anoMes,
     receita,
+    emCurso,
     gastos: g,
     meta: c.metaSobra,
     sobra,
     disponivel,
     restante: disponivel - g.total,
-    situacao: sobra >= c.metaSobra ? 'noAlvo'
-      : sobra >= c.metaSobra * 0.9 ? 'deriva' : 'fora',
+    /* Mês sem nenhuma receita não é meta perdida: é mês em que nada caiu.
+       Pintar de vermelho faria o primeiro mês de trabalho parecer fracasso. */
+    situacao: receita.total === 0 ? 'semRegistro'
+      : sobra >= c.metaSobra ? 'noAlvo'
+        : sobra >= c.metaSobra * 0.9 ? 'deriva' : 'fora',
     pagamento: diaDoPagamento(anoMes),
+    pagamentoEmCurso: diaDoPagamento(mesSeguinte(anoMes)),
   };
 }
 
@@ -179,6 +225,9 @@ export function ritmo(anoMes, hoje) {
     diasNoMes: dias.length,
     esperado,
     gasto: b.gastos.total,
+    // sem teto de gasto não há ritmo a cobrar: comparar com zero acusaria
+    // atraso em todo mês sem salário
+    semTeto: b.disponivel <= 0,
     adiantado: b.gastos.total - esperado,   // positivo = gastando rápido demais
   };
 }
