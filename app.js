@@ -10,6 +10,7 @@ import { icone } from './js/ui/icones.js';
 import { aplicarTema, observarSistema } from './js/ui/tema.js';
 import * as ajustes from './js/ui/telas/ajustes.js';
 import * as corpo from './js/ui/telas/corpo.js';
+import * as dinheiro from './js/ui/telas/dinheiro.js';
 import * as hoje from './js/ui/telas/hoje.js';
 import * as semana from './js/ui/telas/semana.js';
 import * as treino from './js/ui/telas/treino.js';
@@ -25,6 +26,7 @@ const ABAS = [
   { id: 'semana', rotulo: 'Semana', view: semana },
   { id: 'treino', rotulo: 'Treino', view: treino },
   { id: 'corpo', rotulo: 'Corpo', view: corpo },
+  { id: 'dinheiro', rotulo: 'Dinheiro', rotuloCurto: 'Grana', view: dinheiro },
   { id: 'ajustes', rotulo: 'Ajustes', view: ajustes },
 ];
 
@@ -34,6 +36,10 @@ const ABAS = [
 
    A escala normaliza a MAIOR dimensão de tinta em 34/48 para todos. É ajuste
    de exibição: o desenho continua o do arquivo, sem redesenho. */
+/* Só estas abas têm arte do Icons8. As demais caem no traçado desenhado, para
+   uma aba nova nunca aparecer sem ícone enquanto a arte não chega. */
+const COM_ARTE = new Set(['visao', 'hoje', 'semana', 'treino', 'corpo', 'ajustes']);
+
 const ESCALA_ICONE = {
   visao: 1,        // tinta 34x34
   hoje: 1.06,      // 32x24
@@ -70,10 +76,12 @@ function montarNavegacao() {
         'aria-label': rotulo === aba.rotulo ? null : aba.rotulo,
         'aria-current': aba.id === abaAtual ? 'page' : null,
         onclick: () => ir(aba.id),
-      }, variaveis(h('span', { class: 'aba-icone', 'aria-hidden': 'true' }), {
-        'arte-aba': `url("./icons/nav/${aba.id}.png")`,
-        'escala-aba': ESCALA_ICONE[aba.id] ?? 1,
-      }),
+      }, COM_ARTE.has(aba.id)
+        ? variaveis(h('span', { class: 'aba-icone', 'aria-hidden': 'true' }), {
+          'arte-aba': `url("./icons/nav/${aba.id}.png")`,
+          'escala-aba': ESCALA_ICONE[aba.id] ?? 1,
+        })
+        : icone(aba.id, { classe: 'aba-icone-traco' }),
       h('span', {}, rotulo)));
     }
   }

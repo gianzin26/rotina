@@ -114,6 +114,7 @@ export function estadoPadrao() {
     registros: {
       sono: [], deslocamento: [], treino: [], corrida: [],
       peso: [], creatina: [], notas: [], proteina: [],
+      gasto: [], homeOffice: [],
     },
     semanasAtipicas: [],
   };

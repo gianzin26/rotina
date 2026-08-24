@@ -457,6 +457,8 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 /* Tudo preto, como os ícones. O que separa a aba atual é o peso da letra, não
    uma cor mais fraca — desbotar traria o cinza de volta. */
+/* aba sem arte própria: o traçado desenhado ocupa a mesma caixa */
+.aba-icone-traco { width: var(--icone-menu); height: var(--icone-menu); flex: none; }
 .aba.ativa { color: var(--preto-menu); font-weight: var(--peso-forte); }
 
 /* ---------------- cabeçalho de tela ---------------- */
@@ -1674,6 +1676,122 @@ textarea { min-height: var(--altura-textarea); resize: vertical; }
 
 /* sem número grande a legenda encosta no cabeçalho: precisa do próprio respiro */
 .cartao-metrica.so-legenda { margin-top: var(--esp-1); }
+
+/* ---------------- dinheiro ---------------- */
+
+.barra-gasto {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--tinta-neutra);
+  margin-top: var(--esp-3);
+  overflow: hidden;
+}
+
+.barra-gasto-cheia {
+  height: 100%;
+  width: calc(var(--fracao) * 100%);
+  border-radius: 5px;
+  background: var(--verde-grafico);
+}
+.barra-gasto-cheia.amarelo { background: var(--amarelo-grafico); }
+.barra-gasto-cheia.vermelho { background: var(--vermelho-grafico); }
+
+.barra-gasto-nota { margin-top: var(--esp-2); font-size: var(--texto-legenda); }
+
+.categorias { display: flex; flex-direction: column; gap: var(--esp-4); }
+
+.categoria {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.categoria-topo { display: flex; align-items: baseline; justify-content: space-between; gap: var(--esp-2); }
+.categoria-nome { font-size: var(--texto-corpo); }
+.categoria-valor {
+  font-family: var(--font-display);
+  font-weight: var(--peso-forte);
+  font-variant-numeric: tabular-nums;
+}
+
+.categoria-trilho { height: 8px; border-radius: 4px; background: var(--tinta-neutra); overflow: hidden; }
+.categoria-barra {
+  height: 100%;
+  width: calc(var(--fracao) * 100%);
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+.categoria-nota { font-size: var(--texto-eixo); color: var(--text-soft); }
+
+/* Sete colunas: o mês desenhado como calendário, domingo a sábado não importa
+   aqui — o que importa é ver de relance quantos dias rendem vale. */
+.dias-grade {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--esp-1);
+  margin-top: var(--esp-3);
+}
+
+.dia-caixa {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--raio-m);
+  font-size: var(--texto-eixo);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: var(--tinta-neutra);
+}
+
+button.dia-caixa { cursor: pointer; }
+
+.dia-titulo {
+  display: grid;
+  place-items: center;
+  font-size: var(--texto-eixo);
+  color: var(--text-soft);
+  padding-bottom: var(--esp-1);
+}
+
+.dia-vago { aspect-ratio: 1; }
+
+.dia-escritorio { background: var(--tinta-accent); color: var(--accent-texto); }
+.dia-casa { background: var(--tinta-amarela); color: var(--amarelo-texto); }
+.dia-feriado { background: var(--tinta-vermelha); color: var(--vermelho-texto); }
+.dia-fimDeSemana { background: none; color: var(--text-soft); }
+
+.legenda-dias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-3);
+  margin-top: var(--esp-3);
+  font-size: var(--texto-eixo);
+  color: var(--text-soft);
+}
+.legenda-dias span { display: inline-flex; align-items: center; gap: var(--esp-1); }
+
+.ponto {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.linha-valor {
+  font-family: var(--font-display);
+  font-weight: var(--peso-semi);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 /* ---------------- grade de métricas ---------------- */
 
