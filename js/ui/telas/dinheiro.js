@@ -205,8 +205,12 @@ function cartaoLancamentos(b, ctx) {
   return cartao({ titulo: 'Lançamentos', periodo: reais(b.gastos.total) },
     h('div', { class: 'lista' }, b.gastos.lista.map((g) => linha(
       [
+        // sem descricao o titulo ja e a categoria: repeti-la embaixo so ocupa
+        // a linha duas vezes com a mesma palavra
         h('span', { class: 'linha-titulo' }, g.nota || nomeDaCategoria(g.categoria)),
-        h('span', { class: 'linha-sub' }, `${dataCurta(g.data)} · ${nomeDaCategoria(g.categoria)}`),
+        h('span', { class: 'linha-sub' }, g.nota
+          ? `${dataCurta(g.data)} · ${nomeDaCategoria(g.categoria)}`
+          : dataCurta(g.data)),
       ],
       h('span', { class: 'linha-valor' }, reaisExato(g.valor)),
       { aoTocar: () => folhaGasto(g, ctx) },
