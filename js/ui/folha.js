@@ -151,13 +151,27 @@ export function entradaNumero(valor, aoMudar, props = {}) {
 }
 
 /** Grupo de botões exclusivos (segmented control). */
+/**
+ * Fileira de opções exclusivas.
+ *
+ * O realce é movido aqui dentro, no clique. Antes ele dependia de alguém
+ * redesenhar a tela: dentro de uma folha ninguém redesenha, então a escolha
+ * ficava presa na primeira opção e o resto parecia não existir.
+ */
 export function segmentos(itens, valorAtual, aoTrocar) {
-  return h('div', { class: 'segmentos', role: 'tablist' },
-    itens.map((it) => h('button', {
-      class: `segmento ${it.id === valorAtual ? 'ativo' : ''}`,
-      role: 'tab', 'aria-selected': String(it.id === valorAtual),
-      onclick: () => aoTrocar(it.id),
-    }, it.rotulo)));
+  const botoes = itens.map((it) => h('button', {
+    class: `segmento ${it.id === valorAtual ? 'ativo' : ''}`,
+    role: 'tab', 'aria-selected': String(it.id === valorAtual),
+    onclick: () => {
+      botoes.forEach((b, i) => {
+        const meu = itens[i].id === it.id;
+        b.classList.toggle('ativo', meu);
+        b.setAttribute('aria-selected', String(meu));
+      });
+      aoTrocar(it.id);
+    },
+  }, it.rotulo));
+  return h('div', { class: 'segmentos', role: 'tablist' }, botoes);
 }
 
 /** Fileira 1–10 do RPE. */
